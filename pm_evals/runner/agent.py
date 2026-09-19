@@ -48,6 +48,12 @@ def _looks_like_id(key: str, value: Any, id_fields: list[str]) -> bool:
     return k in {f.lower() for f in id_fields} or k.endswith("_id") or k == "id"
 
 
+def _entity_type(tool_name: str) -> str:
+    base = tool_name.split("__")[-1].lower()
+    base = re.sub(r"^(create|add|new|insert|register|make|build|clone|copy|upload|schedule|publish|generate)_?", "", base)
+    return base.rstrip("s")
+
+
 def extract_created_entities(call: ActualToolCall, cleanup: CleanupConfig) -> list[CreatedEntity]:
     """Best-effort: a successful call to a create-like tool whose result contains
     an id-like field is a created entity we may need to clean up."""
@@ -65,16 +71,24 @@ def extract_created_entities(call: ActualToolCall, cleanup: CleanupConfig) -> li
     entities: list[CreatedEntity] = []
     name = call.args.get("name") or call.args.get("title") or call.args.get("label")
 
+    etype = _entity_type(call.name)
+
     def collect(obj: Any) -> None:
         if isinstance(obj, dict):
             eid = None
+            # 1) the object's own id, 2) "<entity>_id" for this tool's entity type, 3) configured id fields
             for k, v in obj.items():
-                if _looks_like_id(k, v, cleanup.id_fields) and k.lower() in {f.lower() for f in cleanup.id_fields}:
+                if k.lower() in ("id", "uuid", "_id") and isinstance(v, (str, int)) and not isinstance(v, bool):
                     eid = str(v)
                     break
+            if eid is None and etype:
+                for k, v in obj.items():
+                    if k.lower() == f"{etype}_id" and isinstance(v, (str, int)) and not isinstance(v, bool):
+                        eid = str(v)
+                        break
             if eid is None:
                 for k, v in obj.items():
-                    if k.lower() == "id" and isinstance(v, (str, int)):
+                    if _looks_like_id(k, v, cleanup.id_fields) and k.lower() in {f.lower() for f in cleanup.id_fields}:
                         eid = str(v)
                         break
             if eid is not None:

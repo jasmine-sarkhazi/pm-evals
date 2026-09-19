@@ -122,6 +122,10 @@ def _cell(row: dict[str, Any], colmap: dict[str, str], field: str) -> str:
         return ""
     if isinstance(v, float) and v.is_integer():
         v = int(v)
+    if isinstance(v, (list, dict)):
+        return json.dumps(v)
+    if isinstance(v, bool):
+        return "true" if v else "false"
     return str(v).strip()
 
 
@@ -320,6 +324,26 @@ async def fetch_google_sheet(link: str) -> list[dict[str, Any]]:
     if b"<html" in resp.content[:500].lower():
         raise ValueError("Google returned a sign-in page. Share the sheet as 'Anyone with the link can view' or upload a CSV export.")
     return parse_csv_bytes(resp.content)
+
+
+def looks_like_case_json(rows: list[dict[str, Any]]) -> bool:
+    """True when the rows are already pm-evals case objects (not a flat sheet)."""
+    if not rows or not isinstance(rows[0], dict):
+        return False
+    r = rows[0]
+    structured = any(isinstance(r.get(k), list) for k in ("expected_tool_calls", "mcp_servers", "metrics", "rubric", "tags"))
+    return bool(r.get("id")) and "input" in r and structured
+
+
+def rows_to_cases_or_json(rows: list[dict[str, Any]], servers: Optional[list[MCPServerConfig]] = None, default_category: str = "deterministic") -> tuple[list[EvalCase], list[str]]:
+    """Accept either a flat sheet or a list of case objects."""
+    if looks_like_case_json(rows):
+        cases = [EvalCase.model_validate(r) for r in rows]
+        for c in cases:
+            if servers and not c.mcp_servers:
+                c.mcp_servers = list(servers)
+        return cases, []
+    return rows_to_cases(rows, servers, default_category)
 
 
 def parse_upload(filename: str, data: bytes) -> list[dict[str, Any]]:

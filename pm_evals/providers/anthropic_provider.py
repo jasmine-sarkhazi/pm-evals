@@ -126,9 +126,13 @@ class AnthropicProvider(LLMProvider):
         }
         try:
             response = await self.client.messages.create(**params)
-        except self._anthropic.BadRequestError:
-            # Older models / proxies without structured outputs: fall back to text parsing.
-            return await super().json_completion(system, prompt, schema, max_tokens)
+        except self._anthropic.BadRequestError as exc:
+            # Only fall back to text parsing when structured outputs themselves
+            # are the problem (older models / proxies); surface anything else.
+            msg = str(exc).lower()
+            if any(k in msg for k in ("output_config", "schema", "structured", "format")):
+                return await super().json_completion(system, prompt, schema, max_tokens)
+            raise ProviderError(f"Anthropic API error {exc.status_code}: {exc.message}") from exc
         except self._anthropic.APIStatusError as exc:
             raise ProviderError(f"Anthropic API error {exc.status_code}: {exc.message}") from exc
         text = next((b.text for b in response.content if b.type == "text"), "")

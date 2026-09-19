@@ -161,12 +161,19 @@ class DistractorConfig(BaseModel):
 
 class CleanupConfig(BaseModel):
     enabled: bool = True
-    entity_prefix: str = "EVAL_"
+    entity_prefix: str = Field(default="EVAL_", min_length=1)
     """Every entity the agent creates must carry this prefix in its name."""
-    delete_tool_prefix: str = "eval_delete"
+    delete_tool_prefix: str = Field(default="eval_delete", min_length=1)
     """Only delete tools whose name starts with this prefix are ever called."""
     id_fields: list[str] = Field(default_factory=lambda: ["id", "segment_id", "entity_id", "uuid", "_id"])
     dry_run: bool = False
+
+    @field_validator("entity_prefix", "delete_tool_prefix")
+    @classmethod
+    def _prefix_not_blank(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError("prefix must not be blank: it is what keeps cleanup from deleting real data")
+        return v.strip()
 
 
 class RunConfig(BaseModel):
