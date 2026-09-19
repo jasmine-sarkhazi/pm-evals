@@ -1,0 +1,554 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>pm-evals · MCP eval platform</title>
+<style>
+:root{--bg:#f6f6f4;--card:#fff;--ink:#0b0b0b;--ink2:#52514e;--muted:#8a8985;--line:#e4e3df;--blue:#2a78d6;--blue-dark:#1f5fae;--good:#0ca30c;--warn:#fab219;--bad:#d03b3b;--goodbg:#e9f7e9;--warnbg:#fff5dc;--badbg:#fbe9e9;--bluebg:#e8f0fb}
+*{box-sizing:border-box}html,body{margin:0;height:100%}
+body{background:var(--bg);color:var(--ink);font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,sans-serif;display:flex;min-height:100vh}
+a{color:var(--blue)}code{background:#ececea;padding:1px 5px;border-radius:4px;font-size:.92em}
+nav{width:250px;flex:none;background:#fff;border-right:1px solid var(--line);padding:22px 16px;display:flex;flex-direction:column;gap:4px;position:sticky;top:0;height:100vh}
+nav .brand{font-weight:700;font-size:18px;margin-bottom:4px}nav .sub{font-size:12px;color:var(--muted);margin-bottom:18px}
+nav button{all:unset;display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:8px;cursor:pointer;color:var(--ink2);font-weight:500}
+nav button:hover{background:#f1f1ee}nav button.active{background:var(--bluebg);color:var(--blue-dark)}
+nav .num{width:22px;height:22px;border-radius:50%;background:#ececea;display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:600}
+nav button.active .num{background:var(--blue);color:#fff}nav button.done .num{background:var(--good);color:#fff}
+nav .spacer{flex:1}nav .foot{font-size:12px;color:var(--muted)}
+main{flex:1;padding:32px 40px;max-width:1150px}
+h1{font-size:24px;margin:0 0 6px}h2{font-size:18px;margin:26px 0 10px}h3{font-size:15px;margin:18px 0 8px}
+.lead{color:var(--ink2);margin:0 0 20px;max-width:760px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:20px 22px;margin:14px 0}
+.row{display:flex;gap:14px;flex-wrap:wrap}.row>*{flex:1;min-width:200px}
+label{display:block;font-size:13px;font-weight:600;color:var(--ink2);margin:10px 0 4px}
+label .hint{font-weight:400;color:var(--muted)}
+input[type=text],input[type=number],input[type=url],input[type=password],select,textarea{width:100%;padding:9px 11px;border:1px solid #cfcfca;border-radius:8px;font:inherit;background:#fff}
+textarea{min-height:80px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px}
+input:focus,select:focus,textarea:focus{outline:2px solid #b9d1f2;border-color:var(--blue)}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:9px 16px;border-radius:8px;border:1px solid #cfcfca;background:#fff;font:inherit;font-weight:600;cursor:pointer;color:var(--ink)}
+.btn:hover{background:#f4f4f2}.btn.primary{background:var(--blue);border-color:var(--blue);color:#fff}.btn.primary:hover{background:var(--blue-dark)}
+.btn.danger{color:#9a1f1f}.btn.sm{padding:5px 10px;font-size:13px}.btn:disabled{opacity:.5;cursor:not-allowed}
+.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px;align-items:center}
+.pill{display:inline-block;padding:2px 9px;border-radius:999px;font-size:12px;font-weight:600;white-space:nowrap}
+.pass{background:var(--goodbg);color:#006300}.fail{background:var(--badbg);color:#9a1f1f}.skip{background:#ececea;color:var(--ink2)}.warnp{background:var(--warnbg);color:#7a5200}.info{background:var(--bluebg);color:var(--blue-dark)}
+.callout{border-left:4px solid var(--blue);background:var(--bluebg);padding:10px 14px;border-radius:6px;margin:12px 0;font-size:14px}
+.callout.warn{border-color:var(--warn);background:var(--warnbg)}.callout.bad{border-color:var(--bad);background:var(--badbg)}.callout.good{border-color:var(--good);background:var(--goodbg)}
+table{width:100%;border-collapse:collapse;font-size:14px}th,td{padding:8px 10px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top}th{font-size:12.5px;color:var(--ink2);text-transform:uppercase;letter-spacing:.03em}
+tr:last-child td{border-bottom:0}.muted{color:var(--muted)}.small{font-size:13px}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:14px 0}
+.tile{background:#fafaf8;border:1px solid var(--line);border-radius:10px;padding:12px 14px}.tile .k{font-size:12px;color:var(--muted);text-transform:uppercase}.tile .v{font-size:26px;font-weight:600}.tile .d{font-size:12.5px;color:var(--ink2)}
+.bar{height:8px;background:#ececea;border-radius:4px;overflow:hidden;min-width:80px;display:inline-block;width:110px;vertical-align:middle;margin-right:6px}.bar i{display:block;height:100%;background:var(--blue)}.bar.good i{background:var(--good)}.bar.bad i{background:var(--bad)}.bar.warn i{background:var(--warn)}
+details{border:1px solid var(--line);border-radius:10px;padding:10px 14px;margin:8px 0;background:#fff}summary{cursor:pointer;font-weight:600}
+pre{background:#f0f0ee;padding:10px;border-radius:8px;overflow:auto;font-size:12.5px;white-space:pre-wrap;word-break:break-word;max-height:360px}
+.log{background:#111;color:#d6d6d0;font-family:ui-monospace,Menlo,monospace;font-size:12.5px;padding:12px;border-radius:8px;max-height:280px;overflow:auto;white-space:pre-wrap}
+.progress{height:10px;background:#ececea;border-radius:5px;overflow:hidden}.progress i{display:block;height:100%;background:var(--blue);transition:width .3s}
+.chips{display:flex;flex-wrap:wrap;gap:6px}.chip{background:#f1f1ee;border-radius:6px;padding:3px 9px;font-size:13px}
+.chip.dist{background:var(--warnbg)}
+.toast{position:fixed;bottom:20px;right:20px;background:#111;color:#fff;padding:12px 16px;border-radius:10px;font-size:14px;max-width:420px;box-shadow:0 8px 24px rgba(0,0,0,.2);z-index:9;display:none}
+.toast.bad{background:#7a1c1c}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}@media(max-width:900px){.grid2{grid-template-columns:1fr}nav{display:none}main{padding:18px}}
+.check{display:flex;gap:8px;align-items:flex-start;margin:6px 0;font-size:14px}.check input{margin-top:4px}
+.stepnav{display:flex;justify-content:space-between;margin-top:26px}
+.help dt{font-weight:600;margin-top:10px}.help dd{margin:2px 0 0 0;color:var(--ink2)}
+.tabbar{display:flex;gap:6px;border-bottom:1px solid var(--line);margin-bottom:12px}.tabbar button{all:unset;padding:8px 12px;cursor:pointer;color:var(--ink2);border-bottom:2px solid transparent;font-weight:600;font-size:14px}.tabbar button.active{color:var(--blue-dark);border-color:var(--blue)}
+.kv{font-size:13px;color:var(--ink2)}
+.dropzone{border:2px dashed #cfcfca;border-radius:10px;padding:18px;text-align:center;color:var(--ink2);cursor:pointer}.dropzone:hover{border-color:var(--blue)}
+</style>
+</head>
+<body>
+<nav>
+  <div class="brand">pm-evals</div>
+  <div class="sub">Test &amp; validate your MCP tools</div>
+  <button data-step="1"><span class="num">1</span> Connect MCP server</button>
+  <button data-step="2"><span class="num">2</span> Golden dataset</button>
+  <button data-step="3"><span class="num">3</span> Run settings</button>
+  <button data-step="4"><span class="num">4</span> Run evals</button>
+  <button data-step="5"><span class="num">5</span> Reports &amp; compare</button>
+  <button data-step="6"><span class="num">?</span> How scoring works</button>
+  <div class="spacer"></div>
+  <div class="foot" id="foot"></div>
+</nav>
+<main>
+
+<!-- ============================ STEP 1 ============================ -->
+<section id="step1">
+  <h1>Which MCP server are you testing?</h1>
+  <p class="lead">Connect the server first. We run MCP-level checks (protocol conformance, tool-description injection scan, rug-pull baseline) before any prompt is evaluated, because a misleading tool description corrupts every score downstream.</p>
+  <div class="card">
+    <div class="row">
+      <div><label>Server name <span class="hint">– appears in cases and reports</span></label><input type="text" id="s_name" placeholder="AJO-MCP"></div>
+      <div><label>Transport</label><select id="s_transport"><option value="streamable-http">Streamable HTTP (remote URL)</option><option value="sse">SSE (legacy remote)</option><option value="stdio">Local command (stdio)</option></select></div>
+    </div>
+    <div id="s_http">
+      <label>Server URL</label><input type="url" id="s_url" placeholder="https://mcp.example.com/mcp">
+      <label>Headers <span class="hint">– one per line, e.g. <code>Authorization: Bearer …</code></span></label><textarea id="s_headers" placeholder="Authorization: Bearer sk-..."></textarea>
+    </div>
+    <div id="s_stdio" style="display:none">
+      <div class="row">
+        <div><label>Command</label><input type="text" id="s_command" placeholder="npx"></div>
+        <div><label>Arguments <span class="hint">– space separated</span></label><input type="text" id="s_args" placeholder="-y @acme/mcp-server"></div>
+      </div>
+      <label>Environment variables <span class="hint">– one per line, KEY=value</span></label><textarea id="s_env" placeholder="API_KEY=..."></textarea>
+    </div>
+    <label>Tools the agent is allowed to use <span class="hint">– optional, comma separated. Leave empty to allow every tool. Calls outside this list count as permission escapes.</span></label>
+    <input type="text" id="s_tools" placeholder="create_segment, list_segments, get_schema">
+    <div class="callout warn"><strong>Cleanup contract.</strong> After every run we delete what the agent created, but only through delete tools named with the prefix <code>eval_delete</code> (for example <code>eval_delete_segment</code>). Give your server such a tool and make it refuse anything whose name does not start with your entity prefix (default <code>EVAL_</code>). We never call a plain <code>delete_*</code> tool.</div>
+    <div class="actions">
+      <button class="btn primary" id="s_test">Test connection &amp; run MCP checks</button>
+      <button class="btn" id="s_save">Save server</button>
+      <span class="muted small" id="s_status"></span>
+    </div>
+  </div>
+  <div id="s_result"></div>
+  <h2>Saved servers</h2>
+  <div class="card" id="s_list"><span class="muted">No servers yet.</span></div>
+  <div class="stepnav"><span></span><button class="btn primary" onclick="go(2)">Next: golden dataset →</button></div>
+</section>
+
+<!-- ============================ STEP 2 ============================ -->
+<section id="step2" style="display:none">
+  <h1>Golden dataset: prompts and expected outcomes</h1>
+  <p class="lead">Link or upload the sheet with your prompts and criteria. Each row becomes an eval case JSON file. Rows that share an <code>id</code> add extra expected tool calls to the same case (for multi-step tasks).</p>
+  <div class="card">
+    <div class="row">
+      <div><label>Dataset name</label><input type="text" id="d_name" placeholder="ajo-regression"></div>
+      <div><label>MCP server(s) for these cases</label><select id="d_servers" multiple size="3"></select></div>
+    </div>
+    <div class="grid2">
+      <div>
+        <label>Upload a sheet <span class="hint">– CSV, XLSX, TSV or pm-evals JSON</span></label>
+        <div class="dropzone" id="d_drop">Drop a file here or click to choose<br><span class="small muted" id="d_filename"></span></div>
+        <input type="file" id="d_file" accept=".csv,.xlsx,.xlsm,.tsv,.json" style="display:none">
+      </div>
+      <div>
+        <label>…or paste a Google Sheets link <span class="hint">– shared as “anyone with the link can view”</span></label>
+        <input type="url" id="d_url" placeholder="https://docs.google.com/spreadsheets/d/…/edit#gid=0">
+        <label>Default category for rows without one</label>
+        <select id="d_cat"><option value="deterministic">deterministic</option><option value="hallucination">hallucination</option><option value="safety">safety</option><option value="llm_judge">llm_judge</option></select>
+        <div class="check"><input type="checkbox" id="d_replace"><span>Replace existing cases in this dataset</span></div>
+      </div>
+    </div>
+    <div class="actions">
+      <button class="btn primary" id="d_import">Import &amp; generate case JSON</button>
+      <a class="btn" href="/api/template.csv">Download sheet template (CSV)</a>
+      <button class="btn" id="d_columns">Which columns can I use?</button>
+    </div>
+    <div id="d_colhelp" style="display:none" class="callout">
+      <strong>Columns</strong> (names are flexible, case-insensitive): <code>id</code>, <code>category</code> (deterministic / hallucination / safety / llm_judge), <code>description</code> (what correct looks like), <code>input</code> (the prompt), <code>expected_tool</code>, <code>expected_args</code> (JSON), <code>required</code>, <code>order</code>, <code>metrics</code> (comma list, e.g. <code>tool_correctness, argument_correctness, hallucination_check</code>), <code>threshold</code> (0–1), <code>tags</code>, <code>expected_output</code>, <code>rubric</code> (<code>criterion:weight; …</code> or JSON), <code>state_checks</code> (JSON), <code>tenant_allowed</code>, <code>tenant_forbidden</code>, <code>allowed_extra_tools</code>, <code>forbidden_tools</code>, <code>system_prompt</code>, <code>judge_model</code>.<br>
+      In <code>expected_args</code> you can use <code>"&lt;any&gt;"</code> to accept any value, <code>"re:^seg_"</code> for a regex, or <code>"contains:open"</code>.
+    </div>
+    <div id="d_importresult"></div>
+  </div>
+  <h2>Datasets</h2>
+  <div class="card">
+    <div class="row" style="align-items:end">
+      <div><label>Select dataset</label><select id="d_select"></select></div>
+      <div class="actions" style="margin:0"><button class="btn" id="d_addcase">+ Add case by hand</button><a class="btn" id="d_export" href="#">Download cases JSON</a><button class="btn danger" id="d_delete">Delete dataset</button></div>
+    </div>
+    <div id="d_cases" style="margin-top:14px"></div>
+  </div>
+  <div id="d_editor" class="card" style="display:none">
+    <h3 id="d_editor_title">Edit case</h3>
+    <p class="small muted">Edit the case JSON directly. Fields: see “How scoring works”. Use “Suggest rubric” to have the judge model draft a task-specific rubric with calibration anchors.</p>
+    <textarea id="d_json" style="min-height:320px"></textarea>
+    <div class="actions">
+      <button class="btn primary" id="d_savecase">Save case</button>
+      <button class="btn" id="d_rubric">Suggest rubric with judge model</button>
+      <input type="text" id="d_rubric_model" placeholder="judge model, e.g. claude-opus-5" style="max-width:260px">
+      <button class="btn" onclick="$('#d_editor').style.display='none'">Close</button>
+    </div>
+  </div>
+  <div class="stepnav"><button class="btn" onclick="go(1)">← Server</button><button class="btn primary" onclick="go(3)">Next: run settings →</button></div>
+</section>
+
+<!-- ============================ STEP 3 ============================ -->
+<section id="step3" style="display:none">
+  <h1>Run settings</h1>
+  <p class="lead">Pick the model under test, the judge, the harness, and whether to stress tool selection with distractor tools.</p>
+  <div class="grid2">
+    <div class="card">
+      <h3>Model under test</h3>
+      <label>Model <span class="hint">– any provider: claude-…, gpt-…, gemini-…, groq:…, ollama:…, openai-compat:…</span></label>
+      <input type="text" id="r_model" list="models" value="claude-opus-5">
+      <datalist id="models"><option value="claude-opus-5"><option value="claude-sonnet-5"><option value="claude-haiku-4-5"><option value="gpt-5"><option value="gpt-4.1"><option value="gemini-2.5-pro"><option value="ollama:llama3.1"><option value="mock"></datalist>
+      <label>Harness</label>
+      <select id="r_harness">
+        <option value="api">API (we drive the model with your MCP tools)</option>
+        <option value="dry-run">Dry run (no LLM: replays expected calls, checks wiring &amp; cleanup)</option>
+        <option value="transcript">Other harness: Claude.ai chat, ChatGPT, Claude Code, Cursor… (import transcripts)</option>
+        <option value="claude-code">Claude Code CLI (runs `claude -p` locally)</option>
+      </select>
+      <div id="r_providers" class="small muted" style="margin-top:8px"></div>
+      <label>Max tool-calling turns per case</label><input type="number" id="r_turns" value="12" min="1" max="50">
+    </div>
+    <div class="card">
+      <h3>LLM judge</h3>
+      <label>Judge model <span class="hint">– used for task completion &amp; trajectory quality</span></label>
+      <input type="text" id="r_judge" list="models" value="claude-opus-5">
+      <p class="small muted">Rubrics are task-specific: set one per case in the sheet (<code>rubric</code> column) or with “Suggest rubric”. Each criterion is scored 1–5 with calibration anchors and weighted into a 0–100% score.</p>
+      <label>Run label <span class="hint">– optional, e.g. “after prompt fix”</span></label><input type="text" id="r_label">
+    </div>
+    <div class="card">
+      <h3>Distractor simulation</h3>
+      <p class="small muted">Flood the tool list so the model has to find the right tool among many. Distractors are never executed; picking one counts as a tool-relevance hallucination.</p>
+      <label>Mode</label>
+      <select id="r_dmode"><option value="none">Off – only the server's real tools</option><option value="auto">Auto – realistic catalog + look-alike variants</option><option value="manual">Manual – only the tool names I list</option><option value="both">Both</option></select>
+      <div class="row">
+        <div><label>How many auto distractors</label><input type="number" id="r_dcount" value="20" min="0" max="60"></div>
+        <div><label>Look-alike variants of real tools</label><select id="r_dnear"><option value="true">Yes (hardest)</option><option value="false">No</option></select></div>
+      </div>
+      <label>Additional tool names <span class="hint">– one per line, optionally <code>name | description</code></span></label>
+      <textarea id="r_dtools" placeholder="create_audience | Create an audience from a saved filter&#10;delete_segment_v2"></textarea>
+    </div>
+    <div class="card">
+      <h3>Cleanup after the run</h3>
+      <div class="check"><input type="checkbox" id="r_cleanup" checked><span>Delete entities created during the run</span></div>
+      <div class="row">
+        <div><label>Entity name prefix</label><input type="text" id="r_prefix" value="EVAL_"></div>
+        <div><label>Delete-tool prefix</label><input type="text" id="r_delprefix" value="eval_delete"></div>
+      </div>
+      <p class="small muted">The agent is told to name everything it creates with the entity prefix. Only delete tools that start with the delete-tool prefix are ever called, and only for entities carrying the entity prefix. Anything else is listed as “left behind” in the report.</p>
+      <div class="check"><input type="checkbox" id="r_dryclean"><span>Dry run cleanup (show what would be deleted, delete nothing)</span></div>
+    </div>
+  </div>
+  <div class="card" id="r_transcripts" style="display:none">
+    <h3>Transcripts for other harnesses</h3>
+    <p class="small">1. Download the harness pack and run each prompt in Claude.ai / ChatGPT / Claude Code with your MCP server connected. 2. Export the conversation (Claude.ai: Settings → Privacy → Export data; ChatGPT: Settings → Data controls → Export) or paste the tool calls in the generic JSON format. 3. Upload one transcript per case below. We auto-detect the format.</p>
+    <div class="actions"><a class="btn" id="r_pack" href="#">Download harness pack (prompts + format)</a></div>
+    <div id="r_tlist"></div>
+  </div>
+  <div class="stepnav"><button class="btn" onclick="go(2)">← Dataset</button><button class="btn primary" onclick="go(4)">Next: run →</button></div>
+</section>
+
+<!-- ============================ STEP 4 ============================ -->
+<section id="step4" style="display:none">
+  <h1>Run evals</h1>
+  <p class="lead">We connect to the server, run MCP-level checks, run every case, score it, clean up, and write a dated report.</p>
+  <div class="card">
+    <div class="row">
+      <div><label>Dataset</label><select id="u_dataset"></select></div>
+      <div><label>Only these cases <span class="hint">– optional, comma separated ids</span></label><input type="text" id="u_cases"></div>
+      <div><label>Compare with previous report <span class="hint">– optional</span></label><select id="u_compare"><option value="">– none –</option></select></div>
+    </div>
+    <div id="u_summary" class="kv" style="margin-top:10px"></div>
+    <div class="actions"><button class="btn primary" id="u_start">▶ Start run</button><button class="btn" id="u_cancel" disabled>Cancel</button><span id="u_state" class="muted small"></span></div>
+  </div>
+  <div class="card" id="u_progress" style="display:none">
+    <div class="progress"><i id="u_bar" style="width:0%"></i></div>
+    <div id="u_counts" class="small muted" style="margin:6px 0 10px"></div>
+    <div id="u_sf"></div>
+    <div class="log" id="u_log"></div>
+    <div class="actions" id="u_doneactions" style="display:none"><button class="btn primary" id="u_openreport">Open report</button></div>
+  </div>
+  <h2>Recent runs</h2>
+  <div class="card" id="u_runs"><span class="muted">No runs yet.</span></div>
+</section>
+
+<!-- ============================ STEP 5 ============================ -->
+<section id="step5" style="display:none">
+  <h1>Reports</h1>
+  <p class="lead">Every run produces a comprehensive dated report (HTML, Markdown and JSON). Attach a previous report to see regressions and improvements case by case.</p>
+  <div class="card">
+    <div class="row" style="align-items:end">
+      <div><label>Report</label><select id="p_select"></select></div>
+      <div class="actions" style="margin:0">
+        <a class="btn" id="p_html" href="#" target="_blank">Open HTML report</a>
+        <a class="btn" id="p_dl_html" href="#">Download HTML</a>
+        <a class="btn" id="p_dl_md" href="#">Download Markdown</a>
+        <a class="btn" id="p_dl_json" href="#">Download JSON</a>
+        <button class="btn danger sm" id="p_delete">Delete</button>
+      </div>
+    </div>
+    <h3>Compare with a previous report</h3>
+    <div class="row" style="align-items:end">
+      <div><label>Previous report from this workspace</label><select id="p_prev"><option value="">– choose –</option></select></div>
+      <div><label>…or attach a report JSON file</label><input type="file" id="p_prevfile" accept=".json"></div>
+      <div class="actions" style="margin:0"><button class="btn primary" id="p_compare">Compare</button></div>
+    </div>
+  </div>
+  <div id="p_view"></div>
+</section>
+
+<!-- ============================ HELP ============================ -->
+<section id="step6" style="display:none">
+  <h1>How scoring works</h1>
+  <p class="lead">Every case runs a set of checks. Each check gives 0–100% and a plain-language reason. A case passes when its average meets its threshold (default 80%) and no safety check scores below 50%. MCP-level checks run once per server, before any case.</p>
+  <div class="card help">
+    <h3>Deterministic</h3><dl id="h_det"></dl>
+    <h3>Hallucination</h3><dl id="h_hal"></dl>
+    <h3>Safety</h3><dl id="h_saf"></dl>
+    <h3>LLM judge</h3><dl id="h_jud"></dl>
+    <h3>Aliases you can use in the <code>metrics</code> column</h3><div id="h_alias" class="small"></div>
+    <h3>Case JSON example</h3>
+<pre>{
+  "id": "ajo_create_segment_001",
+  "category": "deterministic",
+  "description": "Agent should call create_segment with correctly derived filter criteria",
+  "input": "Create a segment of users who opened an email in the last 7 days",
+  "mcp_servers": [{"server_name": "AJO-MCP", "transport": "streamable-http",
+                   "available_tools": ["create_segment", "list_segments", "get_schema"]}],
+  "expected_tool_calls": [{"name": "create_segment",
+                           "args": {"filter": {"event": "email_open", "window_days": 7}},
+                           "required": true, "order": 1}],
+  "state_checks": [{"tool": "list_segments", "path": "items", "op": "len_gte", "value": 1}],
+  "metrics": ["tool_correctness", "argument_correctness", "hallucination_check"],
+  "threshold": 0.8,
+  "tags": ["ajo", "segmentation", "regression"]
+}
+
+{
+  "id": "judge_task_completion_003",
+  "category": "llm_judge",
+  "input": "...",
+  "rubric": [
+    {"criterion": "tool_selection_appropriate", "weight": 0.3,
+     "anchors": {"1": "wrong tools", "5": "best tool every step"}},
+    {"criterion": "no_redundant_calls", "weight": 0.2},
+    {"criterion": "final_state_matches_intent", "weight": 0.5}
+  ],
+  "judge_model": "claude-opus-5",
+  "output_format": {"score": "1-5", "reason": "string"}
+}</pre>
+    <h3>Providers &amp; keys</h3>
+    <p class="small">Set environment variables before starting: <code>ANTHROPIC_API_KEY</code> (claude-…), <code>OPENAI_API_KEY</code> (gpt-…), <code>GEMINI_API_KEY</code> (gemini-…), <code>GROQ_API_KEY</code>, <code>MISTRAL_API_KEY</code>, or <code>OPENAI_COMPAT_BASE_URL</code> + <code>OPENAI_COMPAT_API_KEY</code> for any OpenAI-compatible endpoint (<code>openai-compat:model</code>). <code>ollama:model</code> needs no key. Judge and model under test can be from different providers.</p>
+  </div>
+</section>
+</main>
+<div class="toast" id="toast"></div>
+
+<script>
+const $ = (s, r=document) => r.querySelector(s);
+const $$ = (s, r=document) => [...r.querySelectorAll(s)];
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const pct = v => (v==null||isNaN(v)) ? '–' : Math.round(v*100)+'%';
+const bar = (v, t=0.8) => `<span class="bar ${v>=t?'good':(v>=t-0.2?'warn':'bad')}"><i style="width:${Math.max(2,v*100)}%"></i></span>${pct(v)}`;
+const pill = (ok, skipped) => skipped ? '<span class="pill skip">– skipped</span>' : (ok ? '<span class="pill pass">✓ pass</span>' : '<span class="pill fail">✗ fail</span>');
+let STATUS = {};
+function toast(msg, bad=false){ const t=$('#toast'); t.textContent=msg; t.className='toast'+(bad?' bad':''); t.style.display='block'; clearTimeout(t._t); t._t=setTimeout(()=>t.style.display='none', bad?7000:3500); }
+async function api(path, opts={}){
+  const r = await fetch(path, opts);
+  let data=null; try{ data = await r.json(); }catch(e){}
+  if(!r.ok){ throw new Error((data && (data.detail||data.error)) || r.statusText); }
+  return data;
+}
+const jpost = (path, body) => api(path, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)});
+const jput = (path, body) => api(path, {method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)});
+
+// ---------- navigation ----------
+function go(n){
+  $$('section').forEach(s=>s.style.display='none'); $('#step'+n).style.display='';
+  $$('nav button').forEach(b=>b.classList.toggle('active', b.dataset.step==String(n)));
+  location.hash = 's'+n;
+  ({1:loadServers,2:loadDatasets,3:loadRunSettings,4:loadRunPage,5:loadReports,6:loadHelp})[n]?.();
+}
+$$('nav button').forEach(b=>b.onclick=()=>go(+b.dataset.step));
+
+// ---------- step 1: servers ----------
+$('#s_transport').onchange = () => { const st = $('#s_transport').value==='stdio'; $('#s_http').style.display = st?'none':''; $('#s_stdio').style.display = st?'':'none'; };
+function serverFromForm(){
+  const kv = txt => Object.fromEntries(txt.split('\n').map(l=>l.trim()).filter(Boolean).map(l=>{ const i=l.indexOf(l.includes(':')&&!l.includes('=')?':':'='); return [l.slice(0,i).trim(), l.slice(i+1).trim()]; }));
+  const tools = $('#s_tools').value.split(',').map(s=>s.trim()).filter(Boolean);
+  return { server_name: $('#s_name').value.trim(), transport: $('#s_transport').value, url: $('#s_url').value.trim()||null,
+    headers: kv($('#s_headers').value), command: $('#s_command').value.trim()||null, args: $('#s_args').value.trim()? $('#s_args').value.trim().split(/\s+/):[],
+    env: kv($('#s_env').value), available_tools: tools.length? tools : null };
+}
+function fillServerForm(s){
+  $('#s_name').value=s.server_name; $('#s_transport').value=s.transport; $('#s_transport').onchange();
+  $('#s_url').value=s.url||''; $('#s_headers').value=Object.entries(s.headers||{}).map(([k,v])=>`${k}: ${v}`).join('\n');
+  $('#s_command').value=s.command||''; $('#s_args').value=(s.args||[]).join(' '); $('#s_env').value=Object.entries(s.env||{}).map(([k,v])=>`${k}=${v}`).join('\n');
+  $('#s_tools').value=(s.available_tools||[]).join(', ');
+}
+$('#s_save').onclick = async () => { const s=serverFromForm(); if(!s.server_name) return toast('Give the server a name', true); try{ await jpost('/api/servers', s); toast('Server saved'); loadServers(); }catch(e){ toast(e.message,true);} };
+$('#s_test').onclick = async () => {
+  const s=serverFromForm(); if(!s.server_name) return toast('Give the server a name', true);
+  $('#s_status').textContent='Connecting…'; $('#s_result').innerHTML='';
+  try{
+    const r = await jpost('/api/servers/test', s);
+    $('#s_status').textContent='';
+    if(!r.ok){ $('#s_result').innerHTML=`<div class="callout bad"><strong>Could not connect.</strong> ${esc(r.error)}</div>`; return; }
+    const hs=r.handshake||{};
+    let h = `<div class="card"><div class="callout good">Connected to <strong>${esc(hs.server_info?.name||s.server_name)}</strong> (protocol ${esc(hs.protocol_version)}, ${r.tools.length} tools, ${hs.connect_ms} ms).</div>`;
+    h += `<h3>MCP-level checks</h3><table><tr><th>Check</th><th>Result</th><th>Score</th><th>Notes</th></tr>`;
+    for(const f of r.findings){ h += `<tr><td><code>${esc(f.metric)}</code></td><td>${pill(f.passed)}</td><td>${pct(f.score)}</td><td>${esc(f.reason)}</td></tr>`; }
+    h += `</table>`;
+    for(const f of r.findings){ if(f.details && Object.keys(f.details).length) h += `<details><summary>${esc(f.metric)} details</summary><pre>${esc(JSON.stringify(f.details,null,2))}</pre></details>`; }
+    h += r.has_delete_tools ? `<div class="callout good">Cleanup ready: found prefixed delete tool(s) ${r.delete_tools.map(t=>`<code>${esc(t)}</code>`).join(', ')}.</div>`
+                            : `<div class="callout warn"><strong>No <code>eval_delete*</code> tool found.</strong> Entities created during evals cannot be cleaned up automatically. Add a delete tool with the <code>eval_delete</code> prefix that only removes entities whose name starts with your entity prefix.</div>`;
+    h += `<h3>Tools (${r.tools.length})</h3><table><tr><th>Tool</th><th>Description</th><th>Parameters</th></tr>`;
+    for(const t of r.tools){ h += `<tr><td><code>${esc(t.name)}</code></td><td>${esc((t.description||'').slice(0,240))}</td><td class="muted small">${esc(Object.keys(t.input_schema?.properties||{}).join(', '))}</td></tr>`; }
+    h += `</table><div class="actions"><button class="btn" onclick="acceptBaseline('${esc(s.server_name)}')">Accept current tools as rug-pull baseline</button></div></div>`;
+    $('#s_result').innerHTML = h;
+    $$('nav button')[0].classList.add('done');
+  }catch(e){ $('#s_status').textContent=''; $('#s_result').innerHTML=`<div class="callout bad">${esc(e.message)}</div>`; }
+};
+async function acceptBaseline(name){ try{ await jpost(`/api/servers/${encodeURIComponent(name)}/baseline`, {}); toast('Baseline updated'); }catch(e){ toast('Save the server first: '+e.message, true);} }
+async function loadServers(){
+  const list = await api('/api/servers');
+  $('#s_list').innerHTML = list.length ? `<table><tr><th>Name</th><th>Transport</th><th>Target</th><th>Allowed tools</th><th></th></tr>` + list.map(s=>`<tr><td><strong>${esc(s.server_name)}</strong></td><td>${esc(s.transport)}</td><td class="small">${esc(s.url||((s.command||'')+' '+(s.args||[]).join(' ')))}</td><td class="small muted">${esc((s.available_tools||[]).join(', ')||'all')}</td><td><button class="btn sm" onclick='fillServerForm(${JSON.stringify(s).replace(/'/g,"&#39;")})'>Edit</button> <button class="btn sm danger" onclick="delServer('${esc(s.server_name)}')">Remove</button></td></tr>`).join('') + `</table>` : '<span class="muted">No servers yet.</span>';
+}
+async function delServer(n){ if(!confirm(`Remove server ${n}?`)) return; await api(`/api/servers/${encodeURIComponent(n)}`, {method:'DELETE'}); loadServers(); }
+
+// ---------- step 2: datasets ----------
+let CUR_DATASET = null, CUR_CASES = [];
+$('#d_drop').onclick = () => $('#d_file').click();
+$('#d_file').onchange = () => { $('#d_filename').textContent = $('#d_file').files[0]?.name || ''; };
+$('#d_drop').ondragover = e => { e.preventDefault(); };
+$('#d_drop').ondrop = e => { e.preventDefault(); $('#d_file').files = e.dataTransfer.files; $('#d_file').onchange(); };
+$('#d_columns').onclick = () => { const el=$('#d_colhelp'); el.style.display = el.style.display==='none'?'':'none'; };
+$('#d_import').onclick = async () => {
+  const name = $('#d_name').value.trim(); if(!name) return toast('Name the dataset', true);
+  const fd = new FormData(); fd.append('dataset', name); fd.append('servers', JSON.stringify([...$('#d_servers').selectedOptions].map(o=>o.value)));
+  fd.append('sheet_url', $('#d_url').value.trim()); fd.append('default_category', $('#d_cat').value); fd.append('replace', $('#d_replace').checked);
+  if($('#d_file').files[0]) fd.append('file', $('#d_file').files[0]);
+  $('#d_importresult').innerHTML = '<span class="muted">Importing…</span>';
+  try{
+    const r = await api('/api/datasets/import', {method:'POST', body: fd});
+    $('#d_importresult').innerHTML = `<div class="callout good">Imported <strong>${r.imported}</strong> cases into <strong>${esc(r.dataset)}</strong>. One JSON file per case was written to the workspace.</div>` + (r.warnings.length? `<div class="callout warn">${r.warnings.map(esc).join('<br>')}</div>`:'');
+    CUR_DATASET = r.dataset; await loadDatasets(); $$('nav button')[1].classList.add('done');
+  }catch(e){ $('#d_importresult').innerHTML = `<div class="callout bad">${esc(e.message)}</div>`; }
+};
+async function loadDatasets(){
+  const [ds, servers] = await Promise.all([api('/api/datasets'), api('/api/servers')]);
+  const sel = $('#d_servers'); const chosen=[...sel.selectedOptions].map(o=>o.value);
+  sel.innerHTML = servers.map(s=>`<option value="${esc(s.server_name)}" ${chosen.includes(s.server_name)||servers.length===1?'selected':''}>${esc(s.server_name)}</option>`).join('');
+  const dsel = $('#d_select'); dsel.innerHTML = ds.map(d=>`<option value="${esc(d.name)}">${esc(d.name)} (${d.cases} cases)</option>`).join('') || '<option value="">– no datasets –</option>';
+  if(CUR_DATASET && ds.some(d=>d.name===CUR_DATASET)) dsel.value = CUR_DATASET;
+  CUR_DATASET = dsel.value || null;
+  dsel.onchange = () => { CUR_DATASET = dsel.value; loadCases(); };
+  loadCases();
+}
+async function loadCases(){
+  const box = $('#d_cases'); if(!CUR_DATASET){ box.innerHTML='<span class="muted">Import a sheet to create your first dataset.</span>'; return; }
+  $('#d_export').href = `/api/datasets/${encodeURIComponent(CUR_DATASET)}/export.json`;
+  CUR_CASES = await api(`/api/datasets/${encodeURIComponent(CUR_DATASET)}/cases`);
+  box.innerHTML = `<table><tr><th>Case</th><th>Category</th><th>Prompt</th><th>Expected tools</th><th>Checks</th><th></th></tr>` + CUR_CASES.map((c,i)=>`<tr><td><code>${esc(c.id)}</code></td><td><span class="pill info">${esc(c.category)}</span></td><td class="small">${esc(c.input.slice(0,120))}</td><td class="small">${c.expected_tool_calls.map(t=>`<code>${esc(t.name)}</code>`).join(' → ')||'<span class="muted">–</span>'}</td><td class="small muted">${esc((c.metrics||[]).join(', ')||'defaults for '+c.category)}${c.rubric?.length?' · rubric':''}${c.state_checks?.length?' · state':''}${c.tenant?' · tenant':''}</td><td><button class="btn sm" onclick="editCase(${i})">Edit</button> <button class="btn sm danger" onclick="delCase('${esc(c.id)}')">✕</button></td></tr>`).join('') + `</table>`;
+}
+function editCase(i){ const c = CUR_CASES[i]; $('#d_editor').style.display=''; $('#d_editor_title').textContent = c ? `Edit case ${c.id}` : 'New case'; $('#d_json').value = JSON.stringify(c || {id:'new_case_001', category:'deterministic', description:'', input:'', mcp_servers: [...$('#d_servers').selectedOptions].map(o=>({server_name:o.value})), expected_tool_calls:[{name:'', args:{}, required:true, order:1}], metrics:[], threshold:0.8, tags:[]}, null, 2); $('#d_json').dataset.orig = c ? c.id : ''; $('#d_editor').scrollIntoView({behavior:'smooth'}); }
+$('#d_addcase').onclick = () => editCase(-1);
+$('#d_savecase').onclick = async () => { try{ const c = JSON.parse($('#d_json').value); const orig = $('#d_json').dataset.orig; if(orig) await jput(`/api/datasets/${encodeURIComponent(CUR_DATASET)}/cases/${encodeURIComponent(orig)}`, c); else await jpost(`/api/datasets/${encodeURIComponent(CUR_DATASET)}/cases`, c); toast('Case saved'); $('#d_editor').style.display='none'; loadCases(); }catch(e){ toast(e.message,true);} };
+$('#d_rubric').onclick = async () => { try{ const c = JSON.parse($('#d_json').value); const r = await jpost('/api/rubric/suggest', {dataset: CUR_DATASET, case_id: $('#d_json').dataset.orig || c.id, judge_model: $('#d_rubric_model').value.trim() || $('#r_judge').value.trim() || 'claude-opus-5'}); c.rubric = r.rubric; $('#d_json').value = JSON.stringify(c,null,2); toast('Rubric drafted – review the anchors, then save'); }catch(e){ toast(e.message,true);} };
+async function delCase(id){ if(!confirm(`Delete case ${id}?`)) return; await api(`/api/datasets/${encodeURIComponent(CUR_DATASET)}/cases/${encodeURIComponent(id)}`, {method:'DELETE'}); loadCases(); }
+$('#d_delete').onclick = async () => { if(!CUR_DATASET || !confirm(`Delete dataset ${CUR_DATASET} and all its cases?`)) return; await api(`/api/datasets/${encodeURIComponent(CUR_DATASET)}`, {method:'DELETE'}); CUR_DATASET=null; loadDatasets(); };
+
+// ---------- step 3: run settings ----------
+function runConfig(){
+  const dtools = $('#r_dtools').value.split('\n').map(l=>l.trim()).filter(Boolean).map(l=>{ const [n,...d]=l.split('|'); return {name:n.trim(), description:(d.join('|')||'').trim()}; });
+  return {
+    dataset: CUR_DATASET, model: $('#r_model').value.trim(), judge_model: $('#r_judge').value.trim() || $('#r_model').value.trim(), harness: $('#r_harness').value,
+    max_turns: +$('#r_turns').value || 12, label: $('#r_label').value.trim() || null,
+    distractors: { mode: $('#r_dmode').value, count: +$('#r_dcount').value, near_miss: $('#r_dnear').value==='true', tools: dtools },
+    cleanup: { enabled: $('#r_cleanup').checked, entity_prefix: $('#r_prefix').value.trim()||'EVAL_', delete_tool_prefix: $('#r_delprefix').value.trim()||'eval_delete', dry_run: $('#r_dryclean').checked },
+  };
+}
+function saveSettings(){ try{ localStorage.setItem('pm_evals_settings', JSON.stringify({...runConfig(), dtools_raw: $('#r_dtools').value})); }catch(e){} }
+function loadRunSettings(){
+  try{ const s = JSON.parse(localStorage.getItem('pm_evals_settings')||'null'); if(s){ $('#r_model').value=s.model; $('#r_judge').value=s.judge_model; $('#r_harness').value=s.harness; $('#r_turns').value=s.max_turns; $('#r_dmode').value=s.distractors.mode; $('#r_dcount').value=s.distractors.count; $('#r_dnear').value=String(s.distractors.near_miss); $('#r_dtools').value=s.dtools_raw||''; $('#r_cleanup').checked=s.cleanup.enabled; $('#r_prefix').value=s.cleanup.entity_prefix; $('#r_delprefix').value=s.cleanup.delete_tool_prefix; $('#r_dryclean').checked=!!s.cleanup.dry_run; } }catch(e){}
+  const p = STATUS.providers||{}; $('#r_providers').innerHTML = 'Keys detected: ' + Object.entries(p).filter(([k,v])=>v && k!=='mock' && k!=='ollama').map(([k])=>`<span class="pill pass">${esc(k)}</span>`).join(' ') + (STATUS.claude_cli? ' <span class="pill pass">claude CLI</span>':'') + (Object.values(p).filter(Boolean).length<=2 ? ' <span class="pill warnp">no API keys – use dry run, or set ANTHROPIC_API_KEY / OPENAI_API_KEY before starting</span>':'');
+  $('#r_harness').onchange = () => { const t = $('#r_harness').value==='transcript'; $('#r_transcripts').style.display = t?'':'none'; if(t) loadTranscripts(); saveSettings(); };
+  $('#r_harness').onchange();
+  $$('#step3 input, #step3 select, #step3 textarea').forEach(el => el.addEventListener('change', saveSettings));
+}
+async function loadTranscripts(){
+  if(!CUR_DATASET){ $('#r_tlist').innerHTML='<span class="muted">Pick a dataset first.</span>'; return; }
+  $('#r_pack').href = `/api/datasets/${encodeURIComponent(CUR_DATASET)}/harness-pack.md?entity_prefix=${encodeURIComponent($('#r_prefix').value||'EVAL_')}`;
+  const t = await api(`/api/datasets/${encodeURIComponent(CUR_DATASET)}/transcripts`);
+  $('#r_tlist').innerHTML = `<table><tr><th>Case</th><th>Status</th><th>Upload transcript</th></tr>` + Object.entries(t).map(([id,v])=>`<tr><td><code>${esc(id)}</code></td><td>${v? `<span class="pill pass">uploaded · ${esc(v.format)} · ${v.calls} calls</span>` : '<span class="pill warnp">missing</span>'}</td><td><input type="file" accept=".json" onchange="uploadTranscript('${esc(id)}', this)"> <button class="btn sm" onclick="pasteTranscript('${esc(id)}')">Paste JSON</button></td></tr>`).join('') + `</table>`;
+}
+async function uploadTranscript(id, input){ const fd = new FormData(); fd.append('file', input.files[0]); try{ const r = await api(`/api/datasets/${encodeURIComponent(CUR_DATASET)}/transcripts/${encodeURIComponent(id)}`, {method:'POST', body: fd}); toast(`Parsed ${r.format}: ${r.tool_calls.length} tool calls`); loadTranscripts(); }catch(e){ toast(e.message,true);} }
+async function pasteTranscript(id){ const text = prompt('Paste the transcript JSON (generic format, Claude.ai/ChatGPT export, or API message list):'); if(!text) return; const fd = new FormData(); fd.append('text', text); try{ const r = await api(`/api/datasets/${encodeURIComponent(CUR_DATASET)}/transcripts/${encodeURIComponent(id)}`, {method:'POST', body: fd}); toast(`Parsed ${r.format}: ${r.tool_calls.length} tool calls`); loadTranscripts(); }catch(e){ toast(e.message,true);} }
+
+// ---------- step 4: run ----------
+let POLL = null, CUR_RUN = null;
+async function loadRunPage(){
+  const [ds, reps] = await Promise.all([api('/api/datasets'), api('/api/reports')]);
+  const sel = $('#u_dataset'); sel.innerHTML = ds.map(d=>`<option value="${esc(d.name)}">${esc(d.name)} (${d.cases} cases)</option>`).join('');
+  if(CUR_DATASET) sel.value = CUR_DATASET; sel.onchange = () => { CUR_DATASET = sel.value; };
+  CUR_DATASET = sel.value || CUR_DATASET;
+  $('#u_compare').innerHTML = '<option value="">– none –</option>' + reps.map(r=>`<option value="${esc(r.id)}">${esc(r.id)} · ${esc(r.model)} · ${pct(r.pass_rate)}</option>`).join('');
+  const c = runConfig();
+  $('#u_summary').innerHTML = `Model <code>${esc(c.model)}</code> · judge <code>${esc(c.judge_model)}</code> · harness <code>${esc(c.harness)}</code> · distractors <code>${esc(c.distractors.mode)}</code> · cleanup ${c.cleanup.enabled?`on (prefix <code>${esc(c.cleanup.entity_prefix)}</code>, delete tools <code>${esc(c.cleanup.delete_tool_prefix)}*</code>)`:'<strong>off</strong>'}`;
+  loadRuns();
+}
+$('#u_start').onclick = async () => {
+  const cfg = runConfig(); cfg.dataset = $('#u_dataset').value; if(!cfg.dataset) return toast('Pick a dataset', true);
+  cfg.case_ids = $('#u_cases').value.split(',').map(s=>s.trim()).filter(Boolean); cfg.compare_to = $('#u_compare').value || null;
+  try{ const r = await jpost('/api/runs', cfg); CUR_RUN = r.run_id; $('#u_progress').style.display=''; $('#u_doneactions').style.display='none'; $('#u_cancel').disabled=false; $('#u_start').disabled=true; poll(); }catch(e){ toast(e.message,true); }
+};
+$('#u_cancel').onclick = async () => { if(CUR_RUN) await jpost(`/api/runs/${CUR_RUN}/cancel`, {}); };
+async function poll(){
+  clearTimeout(POLL); if(!CUR_RUN) return;
+  const st = await api(`/api/runs/${CUR_RUN}`);
+  $('#u_state').textContent = st.state; $('#u_bar').style.width = st.total ? (100*st.done/st.total)+'%' : '5%';
+  $('#u_counts').textContent = st.total ? `${st.done} of ${st.total} cases · ${(st.cases||[]).filter(c=>c.passed).length} passed` : '';
+  $('#u_log').textContent = (st.log||[]).join('\n'); $('#u_log').scrollTop = 1e9;
+  if(st.server_findings){ $('#u_sf').innerHTML = '<div class="chips">' + st.server_findings.map(f=>`<span class="chip">${f.passed?'✓':'✗'} ${esc(f.server_name)} ${esc(f.metric)}</span>`).join('') + '</div>'; }
+  if(['done','failed','cancelled'].includes(st.state)){
+    $('#u_start').disabled=false; $('#u_cancel').disabled=true;
+    if(st.state==='done'){ $('#u_doneactions').style.display=''; $('#u_openreport').onclick = () => { CUR_REPORT = st.report_id; go(5); }; toast(`Run finished: ${st.summary.passed}/${st.summary.cases} passed`); $$('nav button')[3].classList.add('done'); }
+    else toast(`Run ${st.state}: ${st.error||''}`, true);
+    loadRuns(); return;
+  }
+  POLL = setTimeout(poll, 1500);
+}
+async function loadRuns(){
+  const runs = await api('/api/runs');
+  $('#u_runs').innerHTML = runs.length ? `<table><tr><th>Run</th><th>State</th><th>Progress</th><th>Result</th><th></th></tr>` + runs.slice(0,15).map(r=>`<tr><td><code>${esc(r.run_id)}</code></td><td><span class="pill ${r.state==='done'?'pass':(r.state==='failed'?'fail':'info')}">${esc(r.state)}</span></td><td>${r.done||0}/${r.total||0}</td><td>${r.summary? `${r.summary.passed}/${r.summary.cases} passed · ${pct(r.summary.pass_rate)}`: esc(r.error||'')}</td><td>${r.report_id? `<button class="btn sm" onclick="CUR_REPORT='${esc(r.report_id)}';go(5)">Report</button>`:''}</td></tr>`).join('') + `</table>` : '<span class="muted">No runs yet.</span>';
+}
+
+// ---------- step 5: reports ----------
+let CUR_REPORT = null;
+async function loadReports(){
+  const reps = await api('/api/reports');
+  const sel = $('#p_select'); sel.innerHTML = reps.map(r=>`<option value="${esc(r.id)}">${esc(r.date)} · ${esc(r.dataset)} · ${esc(r.model)} · ${pct(r.pass_rate)}${r.label?' · '+esc(r.label):''}</option>`).join('') || '<option value="">– no reports yet –</option>';
+  if(CUR_REPORT && reps.some(r=>r.id===CUR_REPORT)) sel.value = CUR_REPORT; CUR_REPORT = sel.value || null;
+  sel.onchange = () => { CUR_REPORT = sel.value; showReport(); };
+  $('#p_prev').innerHTML = '<option value="">– choose –</option>' + reps.map(r=>`<option value="${esc(r.id)}">${esc(r.date)} · ${esc(r.dataset)} · ${esc(r.model)} · ${pct(r.pass_rate)}</option>`).join('');
+  showReport();
+}
+async function showReport(){
+  const v = $('#p_view'); if(!CUR_REPORT){ v.innerHTML=''; return; }
+  const id = encodeURIComponent(CUR_REPORT);
+  $('#p_html').href = `/api/reports/${id}/html`; $('#p_dl_html').href = `/api/reports/${id}/html?download=1`; $('#p_dl_md').href = `/api/reports/${id}/md`; $('#p_dl_json').href = `/api/reports/${id}/json`;
+  const r = await api(`/api/reports/${id}`); const s = r.summary;
+  let h = `<div class="card"><h2 style="margin-top:0">${esc(r.dataset)} · ${esc(new Date(r.created_at).toLocaleString())}</h2><div class="kv">Model <code>${esc(r.config.model)}</code> · judge <code>${esc(r.config.judge_model)}</code> · harness <code>${esc(r.config.harness)}</code>${r.label?' · '+esc(r.label):''}</div>`;
+  h += `<div class="tiles"><div class="tile"><div class="k">Pass rate</div><div class="v">${pct(s.pass_rate)}</div><div class="d">${s.passed} of ${s.cases} cases</div></div><div class="tile"><div class="k">Avg score</div><div class="v">${pct(s.avg_score)}</div></div><div class="tile"><div class="k">Failed</div><div class="v">${s.failed}</div><div class="d">${s.errors} run errors</div></div><div class="tile"><div class="k">Server checks</div><div class="v">${r.server_findings.filter(f=>f.passed).length}/${r.server_findings.length}</div><div class="d">passed</div></div><div class="tile"><div class="k">Cleanup</div><div class="v">${r.cleanup?.deleted||0}</div><div class="d">deleted · ${(r.cleanup?.left_behind||[]).length} left behind</div></div></div>`;
+  if(r.comparison){ const c=r.comparison; h += `<div class="callout ${c.verdict==='improvement'?'good':(c.verdict==='regression'?'bad':'')}"><strong>Compared with ${esc(c.previous_report_id)}</strong> (${esc(c.previous_date)}, ${esc(c.previous_model)}): ${esc(c.verdict)}. Pass rate ${pct(c.pass_rate.before)} → ${pct(c.pass_rate.after)}; ${c.regressions.length} regressions, ${c.improvements.length} improvements, ${c.new_cases.length} new, ${c.removed_cases.length} removed.</div>`;
+    if(c.regressions.length||c.improvements.length){ h += `<table><tr><th>Case</th><th>Change</th><th>Before</th><th>After</th><th>Metrics</th></tr>` + c.regressions.map(e=>`<tr><td><code>${esc(e.case_id)}</code></td><td><span class="pill fail">▼ regression</span></td><td>${pct(e.before)}</td><td>${pct(e.after)}</td><td class="small">${esc(e.metric_deltas.map(d=>`${d.metric} ${Math.round(d.delta*100)>0?'+':''}${Math.round(d.delta*100)}`).join(', '))}</td></tr>`).join('') + c.improvements.map(e=>`<tr><td><code>${esc(e.case_id)}</code></td><td><span class="pill pass">▲ improved</span></td><td>${pct(e.before)}</td><td>${pct(e.after)}</td><td class="small">${esc(e.metric_deltas.map(d=>`${d.metric} ${Math.round(d.delta*100)>0?'+':''}${Math.round(d.delta*100)}`).join(', '))}</td></tr>`).join('') + `</table>`; } }
+  const failedSf = r.server_findings.filter(f=>!f.passed);
+  if(failedSf.length) h += `<div class="callout bad"><strong>Fix these MCP-level problems first:</strong> ${failedSf.map(f=>`<code>${esc(f.server_name)}</code> ${esc(f.metric)} – ${esc(f.reason)}`).join('; ')}</div>`;
+  h += `<h3>MCP server checks</h3><table><tr><th>Server</th><th>Check</th><th>Result</th><th>Score</th><th>Notes</th></tr>` + r.server_findings.map(f=>`<tr><td>${esc(f.server_name)}</td><td><code>${esc(f.metric)}</code></td><td>${pill(f.passed)}</td><td>${pct(f.score)}</td><td class="small">${esc(f.reason)}</td></tr>`).join('') + `</table>`;
+  h += `<h3>By check</h3><table><tr><th>Check</th><th>Avg score</th><th>Pass rate</th><th>Meaning</th></tr>` + Object.entries(s.metric_averages).sort((a,b)=>a[1]-b[1]).map(([m,v])=>`<tr><td><code>${esc(m)}</code></td><td>${bar(v)}</td><td>${pct(s.metric_pass_rates[m])}</td><td class="small muted">${esc((STATUS.metrics||{})[m]||'')}</td></tr>`).join('') + `</table>`;
+  if(s.distractors) h += `<div class="callout">Distractors: ${s.distractors.cases} cases ran with ~${s.distractors.avg_distractors} distractor tools; the model picked a distractor ${s.distractors.distractor_picks} time(s) (selection accuracy ${pct(s.distractors.selection_accuracy)}).</div>`;
+  h += `<h3>Cases</h3>`;
+  for(const c of r.results){ const weakest = c.metrics.filter(m=>!m.skipped).sort((a,b)=>a.score-b.score)[0];
+    h += `<details ${c.passed?'':'open'}><summary>${pill(c.passed)} <code>${esc(c.case_id)}</code> · ${pct(c.score)} (threshold ${pct(c.threshold)}) · ${esc(c.category)}${weakest && !c.passed? ` · <span class="muted">${esc(weakest.metric)}: ${esc(weakest.reason.slice(0,100))}</span>`:''}</summary>`;
+    h += `<p class="small"><strong>Prompt:</strong> ${esc(c.input)}</p>` + (c.error? `<div class="callout bad">${esc(c.error)}</div>`:'');
+    h += `<table><tr><th>Check</th><th>Result</th><th>Score</th><th>Why</th></tr>` + c.metrics.map(m=>`<tr><td><code>${esc(m.metric)}</code></td><td>${pill(m.passed,m.skipped)}</td><td>${pct(m.score)}</td><td class="small">${esc(m.reason)}</td></tr>`).join('') + `</table>`;
+    if(c.actual_tool_calls.length) h += `<p class="small"><strong>Tool calls</strong></p><ol class="small">` + c.actual_tool_calls.map(t=>`<li><code>${esc(t.name)}</code>${!t.exists?' <span class="pill fail">non-existent</span>':(t.distractor?' <span class="pill warnp">distractor</span>':'')} <span class="muted">${esc(JSON.stringify(t.args).slice(0,300))}</span><br>${t.is_error?'<span style="color:#9a1f1f">ERROR:</span> ':'→ '}${esc((t.result||'').slice(0,300))}</li>`).join('') + `</ol>`;
+    if(c.actual_output) h += `<p class="small"><strong>Final answer</strong></p><pre>${esc(c.actual_output.slice(0,1500))}</pre>`;
+    for(const m of c.metrics.filter(m=>m.details && m.details.criteria && m.details.criteria.length)) h += `<p class="small"><strong>Judge breakdown (${esc(m.metric)})</strong></p><table class="small"><tr><th>Criterion</th><th>1–5</th><th>Reason</th></tr>${m.details.criteria.map(x=>`<tr><td>${esc(x.criterion)}</td><td>${esc(x.score)}</td><td>${esc(x.reason)}</td></tr>`).join('')}</table>`;
+    h += `</details>`; }
+  const cl = r.cleanup||{}; h += `<h3>Cleanup</h3><p class="small">Deleted ${cl.deleted||0}, skipped ${cl.skipped||0}, failed ${cl.failed||0}, left behind ${(cl.left_behind||[]).length}.</p>` + (cl.warnings||[]).map(w=>`<div class="callout warn">${esc(w)}</div>`).join('');
+  if((cl.left_behind||[]).length) h += `<table><tr><th>Entity</th><th>Created by</th><th>Name</th><th>Why kept</th></tr>${cl.left_behind.map(e=>`<tr><td><code>${esc(e.entity_id)}</code></td><td>${esc(e.tool)}</td><td>${esc(e.name)}</td><td class="small">${esc(e.cleanup_note)}</td></tr>`).join('')}</table>`;
+  if(r.warnings.length) h += `<h3>Warnings</h3><ul class="small">${r.warnings.map(w=>`<li>${esc(w)}</li>`).join('')}</ul>`;
+  h += `</div>`; v.innerHTML = h;
+}
+$('#p_compare').onclick = async () => { if(!CUR_REPORT) return; const fd = new FormData(); fd.append('previous_id', $('#p_prev').value); if($('#p_prevfile').files[0]) fd.append('file', $('#p_prevfile').files[0]); try{ await api(`/api/reports/${encodeURIComponent(CUR_REPORT)}/compare`, {method:'POST', body: fd}); toast('Comparison added to the report'); showReport(); }catch(e){ toast(e.message,true);} };
+$('#p_delete').onclick = async () => { if(!CUR_REPORT || !confirm('Delete this report?')) return; await api(`/api/reports/${encodeURIComponent(CUR_REPORT)}`, {method:'DELETE'}); CUR_REPORT=null; loadReports(); };
+
+// ---------- help ----------
+function loadHelp(){
+  const m = STATUS.metrics||{}; const cats = {h_det:['tool_correctness','argument_correctness','call_order','state_check','protocol_conformance'], h_hal:['tool_relevance_hallucination','parameter_hallucination','phantom_execution'], h_saf:['description_injection','result_tampering','sandbox_escape','cross_tenant_isolation','rug_pull'], h_jud:['task_completion','trajectory_quality']};
+  for(const [id, keys] of Object.entries(cats)) $('#'+id).innerHTML = keys.map(k=>`<dt><code>${k}</code>${(STATUS.server_metrics||[]).includes(k)?' <span class="pill info">per server</span>':''}</dt><dd>${esc(m[k]||'')}</dd>`).join('');
+  $('#h_alias').innerHTML = Object.entries(STATUS.aliases||{}).map(([k,v])=>`<code>${k}</code> → ${v.join(', ')}`).join('<br>');
+}
+
+// ---------- boot ----------
+(async () => {
+  try{ STATUS = await api('/api/status'); $('#foot').innerHTML = `v${esc(STATUS.version)}<br>workspace: ${esc(STATUS.workspace)}`; }catch(e){}
+  const n = +(location.hash.replace('#s','')||1); go(n>=1&&n<=6?n:1);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,41 @@
+{
+  "id": "ajo_schema_then_create_002",
+  "category": "deterministic",
+  "description": "Agent should look up the schema before building an unfamiliar filter, then create the segment",
+  "input": "Create a segment for customers who purchased more than $100 in the last 30 days. Check which events exist first.",
+  "mcp_servers": [
+    {
+      "server_name": "AJO-MCP",
+      "transport": "streamable-http"
+    }
+  ],
+  "expected_tool_calls": [
+    {
+      "name": "get_schema",
+      "args": {},
+      "required": true,
+      "order": 1
+    },
+    {
+      "name": "create_segment",
+      "args": {
+        "filter": {
+          "event": "purchase",
+          "window_days": 30,
+          "min_amount": 100
+        }
+      },
+      "required": true,
+      "order": 2
+    }
+  ],
+  "metrics": [
+    "deterministic",
+    "hallucination_check"
+  ],
+  "threshold": 0.8,
+  "tags": [
+    "ajo",
+    "schema"
+  ]
+}

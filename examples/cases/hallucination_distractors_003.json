@@ -1,0 +1,47 @@
+{
+  "id": "hallucination_distractors_003",
+  "category": "hallucination",
+  "description": "With look-alike tools in the list, the agent must still pick create_segment and not invent parameters",
+  "input": "Build an audience of everyone who clicked an email in the last 14 days",
+  "mcp_servers": [
+    {
+      "server_name": "AJO-MCP",
+      "transport": "streamable-http"
+    }
+  ],
+  "expected_tool_calls": [
+    {
+      "name": "create_segment",
+      "args": {
+        "filter": {
+          "event": "email_click",
+          "window_days": 14
+        }
+      },
+      "required": true
+    }
+  ],
+  "distractor_tools": [
+    {
+      "name": "create_audience",
+      "description": "Create an audience from a saved filter."
+    },
+    {
+      "name": "create_segment_draft",
+      "description": "Create a draft segment that must be published separately."
+    },
+    {
+      "name": "build_cohort",
+      "description": "Build a behavioural cohort."
+    }
+  ],
+  "metrics": [
+    "tool_correctness",
+    "argument_correctness",
+    "hallucination_check"
+  ],
+  "threshold": 0.8,
+  "tags": [
+    "distractors"
+  ]
+}

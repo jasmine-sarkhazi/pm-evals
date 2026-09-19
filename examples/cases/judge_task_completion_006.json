@@ -1,0 +1,84 @@
+{
+  "id": "judge_task_completion_006",
+  "category": "llm_judge",
+  "description": "Create a segment and a campaign targeting it; the judge grades outcome and path",
+  "input": "Set up an email campaign called Spring Sale for everyone who clicked an email in the last 14 days.",
+  "expected_output": "A segment with an email_click / 14-day filter exists and a campaign named Spring Sale targets it.",
+  "mcp_servers": [
+    {
+      "server_name": "AJO-MCP",
+      "transport": "streamable-http"
+    }
+  ],
+  "expected_tool_calls": [
+    {
+      "name": "create_segment",
+      "args": {
+        "filter": {
+          "event": "email_click",
+          "window_days": 14
+        }
+      },
+      "required": true,
+      "order": 1
+    },
+    {
+      "name": "create_campaign",
+      "args": {
+        "name": "contains:Spring Sale",
+        "segment_id": "<any>"
+      },
+      "required": true,
+      "order": 2
+    }
+  ],
+  "trajectory": [],
+  "rubric": [
+    {
+      "criterion": "tool_selection_appropriate",
+      "weight": 0.3,
+      "anchors": {
+        "1": "Used unrelated or look-alike tools.",
+        "5": "Used create_segment then create_campaign with no detours."
+      }
+    },
+    {
+      "criterion": "no_redundant_calls",
+      "weight": 0.2,
+      "anchors": {
+        "1": "Repeated or exploratory calls that added nothing.",
+        "5": "Only the calls needed."
+      }
+    },
+    {
+      "criterion": "final_state_matches_intent",
+      "weight": 0.5,
+      "anchors": {
+        "1": "No campaign, or wrong audience.",
+        "3": "Campaign exists but filter or name is off.",
+        "5": "Campaign 'Spring Sale' targets a 14-day email_click segment."
+      }
+    }
+  ],
+  "judge_model": "claude-opus-5",
+  "output_format": {
+    "score": "1-5",
+    "reason": "string"
+  },
+  "calibration_examples": [
+    {
+      "score": 5,
+      "reason": "Both entities created with the exact filter and name.",
+      "trajectory": "create_segment(email_click,14) -> create_campaign(Spring Sale)"
+    },
+    {
+      "score": 2,
+      "reason": "Segment created with a 7-day window and no campaign.",
+      "trajectory": "create_segment(email_click,7)"
+    }
+  ],
+  "threshold": 0.7,
+  "tags": [
+    "judge"
+  ]
+}

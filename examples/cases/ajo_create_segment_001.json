@@ -1,0 +1,53 @@
+{
+  "id": "ajo_create_segment_001",
+  "category": "deterministic",
+  "description": "Agent should call create_segment with correctly derived filter criteria",
+  "input": "Create a segment of users who opened an email in the last 7 days",
+  "expected_output": null,
+  "mcp_servers": [
+    {
+      "server_name": "AJO-MCP",
+      "transport": "streamable-http",
+      "available_tools": [
+        "create_segment",
+        "list_segments",
+        "get_schema"
+      ]
+    }
+  ],
+  "expected_tool_calls": [
+    {
+      "name": "create_segment",
+      "args": {
+        "filter": {
+          "event": "email_open",
+          "window_days": 7
+        }
+      },
+      "required": true,
+      "order": 1
+    }
+  ],
+  "state_checks": [
+    {
+      "tool": "list_segments",
+      "path": "items",
+      "op": "len_gte",
+      "value": 1,
+      "description": "a segment now exists"
+    }
+  ],
+  "actual_tool_calls": [],
+  "actual_output": null,
+  "metrics": [
+    "tool_correctness",
+    "argument_correctness",
+    "hallucination_check"
+  ],
+  "threshold": 0.8,
+  "tags": [
+    "ajo",
+    "segmentation",
+    "regression"
+  ]
+}
