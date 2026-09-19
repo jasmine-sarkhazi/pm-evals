@@ -132,7 +132,8 @@ class EvalCase(BaseModel):
     distractor_tools: list[DistractorTool] = Field(default_factory=list)
     calibration_examples: list[dict[str, Any]] = Field(default_factory=list)
     """Few-shot anchors for the judge: ``{"trajectory": ..., "score": 4, "reason": ...}``."""
-    max_turns: int = 12
+    max_turns: Optional[int] = None
+    """Overrides the run-level max_turns when set."""
 
     @field_validator("threshold")
     @classmethod

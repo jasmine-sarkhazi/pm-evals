@@ -100,7 +100,7 @@ async def run_agent(case: EvalCase, cfg: RunConfig, provider: LLMProvider, regis
     tools = registry.llm_tools()
     history: list[dict[str, Any]] = [{"role": "user", "content": case.input}]
     system = system_prompt_for(case, cfg)
-    max_turns = case.max_turns or cfg.max_turns
+    max_turns = case.max_turns if case.max_turns is not None else cfg.max_turns
     order = 0
     usage: dict[str, int] = {"input_tokens": 0, "output_tokens": 0}
     started = time.perf_counter()
@@ -109,7 +109,7 @@ async def run_agent(case: EvalCase, cfg: RunConfig, provider: LLMProvider, regis
     for turn in range(max_turns):
         trace.turns = turn + 1
         try:
-            result = await provider.complete(system, history, tools)
+            result = await provider.complete(system, history, tools, max_tokens=16000)
         except ProviderError as exc:
             trace.error = str(exc)
             trace.trajectory.append(f"provider error: {exc}")
@@ -121,7 +121,7 @@ async def run_agent(case: EvalCase, cfg: RunConfig, provider: LLMProvider, regis
             trace.trajectory.append(f"thinking: {result.thinking[:500]}")
         if result.text:
             trace.trajectory.append(f"assistant: {result.text[:1000]}")
-        history.append({"role": "assistant", "content": result.text, "tool_calls": result.tool_calls})
+        history.append({"role": "assistant", "content": result.text, "tool_calls": result.tool_calls, "raw_blocks": result.raw_blocks})
         if not result.tool_calls:
             trace.output = result.text
             break

@@ -120,6 +120,8 @@ def _cell(row: dict[str, Any], colmap: dict[str, str], field: str) -> str:
     v = row.get(col)
     if v is None:
         return ""
+    if isinstance(v, float) and v.is_integer():
+        v = int(v)
     return str(v).strip()
 
 
@@ -239,7 +241,7 @@ def rows_to_cases(rows: Iterable[dict[str, Any]], servers: Optional[list[MCPServ
                 allowed_extra_tools=_list_cell(_cell(row, colmap, "allowed_extra_tools")),
                 forbidden_tools=_list_cell(_cell(row, colmap, "forbidden_tools")),
                 system_prompt=_cell(row, colmap, "system_prompt") or None,
-                max_turns=int(max_turns_text) if max_turns_text.isdigit() else 12,
+                max_turns=int(max_turns_text) if max_turns_text.isdigit() else None,
             )
             for d in _list_cell(_cell(row, colmap, "distractor_tools")):
                 from ..models import DistractorTool
