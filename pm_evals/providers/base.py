@@ -3,7 +3,7 @@
 History is a list of dicts:
 
 * ``{"role": "user", "content": str}``
-* ``{"role": "assistant", "content": str | None, "tool_calls": [ToolCallRequest...]}``
+* ``{"role": "assistant", "content": str | None, "tool_calls": [ToolCallRequest...], "raw_blocks": [...]?}``
 * ``{"role": "tool", "tool_call_id": str, "name": str, "content": str, "is_error": bool}``
 
 Each provider converts to/from its native shape. Tool definitions use the
@@ -35,6 +35,9 @@ class Turn:
     usage: dict[str, int] = field(default_factory=dict)
     raw: Any = None
     thinking: Optional[str] = None
+    raw_blocks: Optional[list[dict[str, Any]]] = None
+    """Provider-native content blocks of the assistant turn, replayed verbatim
+    by providers that need them (Anthropic thinking blocks)."""
 
 
 class ProviderError(RuntimeError):

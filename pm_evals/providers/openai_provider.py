@@ -35,12 +35,21 @@ def _to_openai_messages(system: str, history: list[dict[str, Any]]) -> list[dict
     return messages
 
 
-def _sanitize_schema(schema: dict[str, Any]) -> dict[str, Any]:
-    """Some compatible endpoints reject pydantic ``title`` keys."""
+def _sanitize_schema(schema: Any) -> Any:
+    """Drop pydantic ``title`` annotations (some compatible endpoints reject
+    them) without touching property *names* such as a parameter called title."""
     if isinstance(schema, dict):
-        return {k: _sanitize_schema(v) for k, v in schema.items() if k != "title"}
+        out: dict[str, Any] = {}
+        for k, v in schema.items():
+            if k == "title" and not isinstance(v, dict):
+                continue
+            if k in ("properties", "$defs", "definitions", "patternProperties") and isinstance(v, dict):
+                out[k] = {pk: _sanitize_schema(pv) for pk, pv in v.items()}
+            else:
+                out[k] = _sanitize_schema(v)
+        return out
     if isinstance(schema, list):
-        return [_sanitize_schema(v) for v in schema]  # type: ignore[return-value]
+        return [_sanitize_schema(v) for v in schema]
     return schema
 
 
