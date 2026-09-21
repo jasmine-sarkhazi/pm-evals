@@ -48,6 +48,12 @@ def _looks_like_id(key: str, value: Any, id_fields: list[str]) -> bool:
     return k in {f.lower() for f in id_fields} or k.endswith("_id") or k == "id"
 
 
+def _entity_type(tool_name: str) -> str:
+    base = tool_name.split("__")[-1].lower()
+    base = re.sub(r"^(create|add|new|insert|register|make|build|clone|copy|upload|schedule|publish|generate)_?", "", base)
+    return base.rstrip("s")
+
+
 def extract_created_entities(call: ActualToolCall, cleanup: CleanupConfig) -> list[CreatedEntity]:
     """Best-effort: a successful call to a create-like tool whose result contains
     an id-like field is a created entity we may need to clean up."""
@@ -65,16 +71,24 @@ def extract_created_entities(call: ActualToolCall, cleanup: CleanupConfig) -> li
     entities: list[CreatedEntity] = []
     name = call.args.get("name") or call.args.get("title") or call.args.get("label")
 
+    etype = _entity_type(call.name)
+
     def collect(obj: Any) -> None:
         if isinstance(obj, dict):
             eid = None
+            # 1) the object's own id, 2) "<entity>_id" for this tool's entity type, 3) configured id fields
             for k, v in obj.items():
-                if _looks_like_id(k, v, cleanup.id_fields) and k.lower() in {f.lower() for f in cleanup.id_fields}:
+                if k.lower() in ("id", "uuid", "_id") and isinstance(v, (str, int)) and not isinstance(v, bool):
                     eid = str(v)
                     break
+            if eid is None and etype:
+                for k, v in obj.items():
+                    if k.lower() == f"{etype}_id" and isinstance(v, (str, int)) and not isinstance(v, bool):
+                        eid = str(v)
+                        break
             if eid is None:
                 for k, v in obj.items():
-                    if k.lower() == "id" and isinstance(v, (str, int)):
+                    if _looks_like_id(k, v, cleanup.id_fields) and k.lower() in {f.lower() for f in cleanup.id_fields}:
                         eid = str(v)
                         break
             if eid is not None:
@@ -100,7 +114,7 @@ async def run_agent(case: EvalCase, cfg: RunConfig, provider: LLMProvider, regis
     tools = registry.llm_tools()
     history: list[dict[str, Any]] = [{"role": "user", "content": case.input}]
     system = system_prompt_for(case, cfg)
-    max_turns = case.max_turns or cfg.max_turns
+    max_turns = case.max_turns if case.max_turns is not None else cfg.max_turns
     order = 0
     usage: dict[str, int] = {"input_tokens": 0, "output_tokens": 0}
     started = time.perf_counter()
@@ -109,7 +123,7 @@ async def run_agent(case: EvalCase, cfg: RunConfig, provider: LLMProvider, regis
     for turn in range(max_turns):
         trace.turns = turn + 1
         try:
-            result = await provider.complete(system, history, tools)
+            result = await provider.complete(system, history, tools, max_tokens=16000)
         except ProviderError as exc:
             trace.error = str(exc)
             trace.trajectory.append(f"provider error: {exc}")
@@ -121,7 +135,7 @@ async def run_agent(case: EvalCase, cfg: RunConfig, provider: LLMProvider, regis
             trace.trajectory.append(f"thinking: {result.thinking[:500]}")
         if result.text:
             trace.trajectory.append(f"assistant: {result.text[:1000]}")
-        history.append({"role": "assistant", "content": result.text, "tool_calls": result.tool_calls})
+        history.append({"role": "assistant", "content": result.text, "tool_calls": result.tool_calls, "raw_blocks": result.raw_blocks})
         if not result.tool_calls:
             trace.output = result.text
             break

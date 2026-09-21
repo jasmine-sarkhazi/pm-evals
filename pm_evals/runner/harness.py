@@ -288,7 +288,7 @@ async def run_claude_code(case: EvalCase, cfg: RunConfig, servers: list[MCPServe
             "--strict-mcp-config",
             "--allowedTools", allowed,
             "--append-system-prompt", system_prompt,
-            "--max-turns", str(case.max_turns or cfg.max_turns),
+            "--max-turns", str(case.max_turns if case.max_turns is not None else cfg.max_turns),
         ]
         if cfg.model and not cfg.model.startswith("mock"):
             cmd += ["--model", cfg.model]
@@ -296,7 +296,11 @@ async def run_claude_code(case: EvalCase, cfg: RunConfig, servers: list[MCPServe
         try:
             out, err = await asyncio.wait_for(proc.communicate(), timeout=timeout)
         except asyncio.TimeoutError:
-            proc.kill()
+            try:
+                proc.kill()
+                await proc.wait()
+            except ProcessLookupError:
+                pass
             raise RuntimeError("claude CLI timed out")
         text = out.decode("utf-8", "replace").strip()
         if proc.returncode != 0 and not text:

@@ -215,13 +215,6 @@ class MCPConnection:
             malformed=malformed,
         )
 
-    async def ping(self) -> bool:
-        assert self.client is not None
-        try:
-            await self.client.send_ping()
-            return True
-        except Exception:
-            return False
 
 
 async def probe_server(config: MCPServerConfig, in_process_server: Any = None) -> dict[str, Any]:

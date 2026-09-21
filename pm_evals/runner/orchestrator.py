@@ -143,7 +143,9 @@ class Runner:
                 try:
                     case_judge = judge
                     if case.judge_model and case.judge_model != cfg.judge_model and cfg.harness != "dry-run":
-                        case_judge = judges.setdefault(case.judge_model, make_judge(case.judge_model))
+                        if case.judge_model not in judges:
+                            judges[case.judge_model] = make_judge(case.judge_model)
+                        case_judge = judges[case.judge_model]
                     distractors = build_distractors(cfg.distractors, [t.name for c in conns for t in await c.list_tools()])
                     distractors += [d for d in case.distractor_tools if d.name not in {x.name for x in distractors}]
                     registry = await ToolRegistry.build(conns, distractors, shuffle_seed=cfg.distractors.seed + idx if distractors else None) if conns else ToolRegistry()
@@ -171,6 +173,9 @@ class Runner:
                             parsed = parse_transcript(data, case.input)
                             calls, output = parsed["actual_tool_calls"], parsed["actual_output"]
                             trajectory = [f"imported transcript ({parsed['format']})"]
+                        if any(c.order <= 0 for c in calls) or any(b.order <= a.order for a, b in zip(calls, calls[1:])):
+                            for i, c in enumerate(calls, 1):
+                                c.order = i
                         for c in calls:
                             if registry.tools:
                                 t = registry.get(c.name)
@@ -190,7 +195,7 @@ class Runner:
                             return None
                         return await conn_map[t.server].call_tool(t.definition.name if t.definition else name, args)
 
-                    ctx = CheckContext(case=case, config=cfg, calls=calls, output=output, trajectory=trajectory, tool_defs=tool_defs, judge=case_judge, call_tool=_call if (conns and cfg.harness != "transcript") else None, extras={"distractors_presented": res.distractors_presented})
+                    ctx = CheckContext(case=case, config=cfg, calls=calls, output=output, trajectory=trajectory, tool_defs=tool_defs, judge=case_judge, call_tool=_call if conns else None, extras={"distractors_presented": res.distractors_presented})
                     for metric in resolve_metrics(case):
                         fn = get_check(metric)
                         if fn is None:

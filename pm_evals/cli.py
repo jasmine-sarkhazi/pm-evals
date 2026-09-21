@@ -4,6 +4,7 @@
     pm-evals demo                                start the UI with the bundled demo server + dataset
     pm-evals import <dataset> <file-or-sheet-url> [--server NAME ...]
     pm-evals servers add <name> --transport streamable-http --url URL [--header K=V ...]
+    pm-evals servers add <name> --transport stdio --command npx --args "-y @acme/mcp-server"
     pm-evals servers test <name>
     pm-evals run <dataset> [--model claude-opus-5] [--judge ...] [--harness api|dry-run|transcript|claude-code]
                            [--distractors none|auto|manual|both] [--distractor NAME ...] [--compare REPORT_ID]
@@ -62,7 +63,7 @@ def cmd_template(args: argparse.Namespace) -> None:
 
 
 def cmd_import(args: argparse.Namespace) -> None:
-    from .importers.sheet import fetch_google_sheet, parse_upload, rows_to_cases
+    from .importers.sheet import fetch_google_sheet, parse_upload, rows_to_cases_or_json
 
     ws = Workspace(args.workspace)
     if args.source.startswith("http"):
@@ -71,7 +72,9 @@ def cmd_import(args: argparse.Namespace) -> None:
         with open(args.source, "rb") as fh:
             rows = parse_upload(args.source, fh.read())
     servers = [MCPServerConfig(server_name=n) for n in (args.server or [])]
-    cases, warnings = rows_to_cases(rows, servers)
+    cases, warnings = rows_to_cases_or_json(rows, servers)
+    if not cases:
+        raise SystemExit("no cases found: " + "; ".join(warnings or ["check the 'input' column"]))
     n = ws.save_cases(args.dataset, cases, {"source": args.source, "servers": args.server or []})
     print(f"imported {n} cases into dataset '{args.dataset}'")
     for w in warnings:
@@ -88,8 +91,10 @@ def cmd_servers(args: argparse.Namespace) -> None:
     elif args.servers_cmd == "add":
         headers = dict(h.split("=", 1) for h in (args.header or []))
         env = dict(e.split("=", 1) for e in (args.env or []))
+        import shlex
+
         cfg = MCPServerConfig(
-            server_name=args.name, transport=args.transport, url=args.url, headers=headers, command=args.command, args=args.args or [], env=env,
+            server_name=args.name, transport=args.transport, url=args.url, headers=headers, command=args.command, args=shlex.split(args.args or ""), env=env,
             available_tools=args.tools or None,
         )
         ws.save_server(cfg)
@@ -217,7 +222,7 @@ def build_parser() -> argparse.ArgumentParser:
     a.add_argument("--url")
     a.add_argument("--header", action="append", help="K=V")
     a.add_argument("--command")
-    a.add_argument("--args", nargs="*")
+    a.add_argument("--args", default="", help='arguments as one quoted string, e.g. --args "-y @acme/mcp-server"')
     a.add_argument("--env", action="append", help="K=V")
     a.add_argument("--tools", nargs="*", help="allow-list of tools the agent may use")
     te = svs.add_parser("test")

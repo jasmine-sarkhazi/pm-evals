@@ -25,8 +25,13 @@ _SAFE = re.compile(r"[^A-Za-z0-9_.-]+")
 
 
 def slug(value: str) -> str:
-    value = _SAFE.sub("_", value.strip())
-    return value.strip("_") or "item"
+    """Filesystem-safe name. Never yields '', '.' or '..' (or anything that
+    would escape the workspace)."""
+    value = _SAFE.sub("_", (value or "").strip())
+    value = value.strip("_.")
+    if not value or set(value) <= {".", "_", "-"}:
+        return "item"
+    return value
 
 
 class Workspace:
@@ -50,8 +55,14 @@ class Workspace:
         tmp.replace(path)
 
     # -- datasets ----------------------------------------------------------
+    def _inside(self, path: Path) -> Path:
+        resolved = path.resolve()
+        if resolved != self.root and self.root not in resolved.parents:
+            raise ValueError(f"refusing path outside the workspace: {path}")
+        return resolved
+
     def dataset_dir(self, dataset: str) -> Path:
-        return self.root / "datasets" / slug(dataset)
+        return self._inside(self.root / "datasets" / slug(dataset))
 
     def list_datasets(self) -> list[dict[str, Any]]:
         out = []
@@ -77,10 +88,11 @@ class Workspace:
         return n
 
     def load_cases(self, dataset: str, case_ids: Optional[list[str]] = None) -> list[EvalCase]:
-        cdir = self.dataset_dir(dataset) / "cases"
-        if not cdir.exists():
+        ddir = self.dataset_dir(dataset)
+        cdir = ddir / "cases"
+        if not ddir.exists():
             raise FileNotFoundError(f"dataset '{dataset}' not found in {self.root}")
-        cases = [EvalCase.model_validate(self._read_json(p)) for p in sorted(cdir.glob("*.json"))]
+        cases = [EvalCase.model_validate(self._read_json(p)) for p in sorted(cdir.glob("*.json"))] if cdir.exists() else []
         if case_ids:
             wanted = set(case_ids)
             cases = [c for c in cases if c.id in wanted]
@@ -190,7 +202,7 @@ class Workspace:
 
     # -- transcripts -------------------------------------------------------
     def transcript_dir(self, dataset: str) -> Path:
-        d = self.root / "transcripts" / slug(dataset)
+        d = self._inside(self.root / "transcripts" / slug(dataset))
         d.mkdir(parents=True, exist_ok=True)
         return d
 
