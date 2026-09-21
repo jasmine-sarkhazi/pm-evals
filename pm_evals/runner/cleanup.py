@@ -77,6 +77,10 @@ async def cleanup_entities(
         return summary
     if not entities:
         return summary
+    if not cfg.entity_prefix.strip() or not cfg.delete_tool_prefix.strip():
+        summary["warnings"].append("cleanup skipped: entity prefix and delete-tool prefix must both be set")
+        summary["left_behind"] = [e.model_dump(mode="json") for e in entities]
+        return summary
     tools_by_server: dict[str, list[ToolDef]] = {}
     for name, conn in connections.items():
         try:

@@ -127,6 +127,33 @@ The model string picks the provider:
 
 The judge can be a different provider from the model under test.
 
+## Judges
+
+The `--judge` / judge-model setting picks *how* the `task_completion` and
+`trajectory_quality` metrics are graded:
+
+* **LLM-as-judge** (any generative model string, e.g. `claude-opus-5`, `gpt-5`) —
+  the model reads the trajectory and returns a 1–5 score per rubric criterion plus
+  a written reason, weighted into a 0–1 metric score.
+* **System One / Jev** (`jev`, or `typesafe` / `system-one`) — grades with
+  [TypeSafe](https://docs.typesafe.ai)'s System One model, which returns *typed
+  judgments with probabilities* rather than generated text. Each rubric criterion
+  becomes a **Score** question (a degree along the criterion's anchored 1–5
+  levels) and *"did the tool perform correctly?"* becomes a **Noul** (the
+  probability of "yes"). The typed answers are converted to the same 1–5 rubric
+  scores, so reports and comparisons look identical; the report additionally shows
+  the System One correctness verdict and probability.
+
+  ```bash
+  pip install "pm-evals[typesafe]"        # the typesafe-sdk client
+  export TYPESAFE_API_KEY=...             # from https://console.typesafe.ai/
+  pm-evals run ajo --model claude-opus-5 --judge jev
+  ```
+
+  Use `jev:mock` to exercise the System One path offline (no SDK, key or network).
+  Jev returns typed judgments and does not *draft* rubrics — use an LLM judge for
+  "Suggest rubric", then score with Jev.
+
 ## Harnesses
 
 * **api** – pm-evals drives the model with the MCP tools in a loop (default).

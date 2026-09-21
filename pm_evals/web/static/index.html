@@ -171,7 +171,7 @@ pre{background:#f0f0ee;padding:10px;border-radius:8px;overflow:auto;font-size:12
       <h3>Model under test</h3>
       <label>Model <span class="hint">– any provider: claude-…, gpt-…, gemini-…, groq:…, ollama:…, openai-compat:…</span></label>
       <input type="text" id="r_model" list="models" value="claude-opus-5">
-      <datalist id="models"><option value="claude-opus-5"><option value="claude-sonnet-5"><option value="claude-haiku-4-5"><option value="gpt-5"><option value="gpt-4.1"><option value="gemini-2.5-pro"><option value="ollama:llama3.1"><option value="mock"></datalist>
+      <datalist id="models"><option value="claude-opus-5"><option value="claude-sonnet-5"><option value="claude-haiku-4-5"><option value="gpt-5"><option value="gpt-4.1"><option value="gemini-2.5-pro"><option value="ollama:llama3.1"><option value="jev"><option value="jev:mock"><option value="mock"></datalist>
       <label>Harness</label>
       <select id="r_harness">
         <option value="api">API (we drive the model with your MCP tools)</option>
@@ -183,10 +183,11 @@ pre{background:#f0f0ee;padding:10px;border-radius:8px;overflow:auto;font-size:12
       <label>Max tool-calling turns per case</label><input type="number" id="r_turns" value="12" min="1" max="50">
     </div>
     <div class="card">
-      <h3>LLM judge</h3>
+      <h3>Judge</h3>
       <label>Judge model <span class="hint">– used for task completion &amp; trajectory quality</span></label>
       <input type="text" id="r_judge" list="models" value="claude-opus-5">
       <p class="small muted">Rubrics are task-specific: set one per case in the sheet (<code>rubric</code> column) or with “Suggest rubric”. Each criterion is scored 1–5 with calibration anchors and weighted into a 0–100% score.</p>
+      <p class="small muted">Enter an LLM (e.g. <code>claude-opus-5</code>) for the classic LLM-as-judge, or <code>jev</code> to judge with TypeSafe's <strong>System One</strong> model: each criterion becomes a typed <em>Score</em> and “did the tool perform correctly?” a typed <em>Noul</em> (probability), instead of generated prose. Needs <code>TYPESAFE_API_KEY</code>; use <code>jev:mock</code> to try it offline. (Rubric drafting still needs an LLM judge.)</p>
       <label>Run label <span class="hint">– optional, e.g. “after prompt fix”</span></label><input type="text" id="r_label">
     </div>
     <div class="card">
@@ -311,7 +312,7 @@ pre{background:#f0f0ee;padding:10px;border-radius:8px;overflow:auto;font-size:12
   "output_format": {"score": "1-5", "reason": "string"}
 }</pre>
     <h3>Providers &amp; keys</h3>
-    <p class="small">Set environment variables before starting: <code>ANTHROPIC_API_KEY</code> (claude-…), <code>OPENAI_API_KEY</code> (gpt-…), <code>GEMINI_API_KEY</code> (gemini-…), <code>GROQ_API_KEY</code>, <code>MISTRAL_API_KEY</code>, or <code>OPENAI_COMPAT_BASE_URL</code> + <code>OPENAI_COMPAT_API_KEY</code> for any OpenAI-compatible endpoint (<code>openai-compat:model</code>). <code>ollama:model</code> needs no key. Judge and model under test can be from different providers.</p>
+    <p class="small">Set environment variables before starting: <code>ANTHROPIC_API_KEY</code> (claude-…), <code>OPENAI_API_KEY</code> (gpt-…), <code>GEMINI_API_KEY</code> (gemini-…), <code>GROQ_API_KEY</code>, <code>MISTRAL_API_KEY</code>, or <code>OPENAI_COMPAT_BASE_URL</code> + <code>OPENAI_COMPAT_API_KEY</code> for any OpenAI-compatible endpoint (<code>openai-compat:model</code>). <code>ollama:model</code> needs no key. For the TypeSafe System One judge (<code>jev</code>) set <code>TYPESAFE_API_KEY</code> (or use <code>jev:mock</code> offline). Judge and model under test can be from different providers.</p>
   </div>
 </section>
 </main>
@@ -442,8 +443,10 @@ function runConfig(){
   };
 }
 function saveSettings(){ try{ localStorage.setItem('pm_evals_settings', JSON.stringify({...runConfig(), dtools_raw: $('#r_dtools').value})); }catch(e){} }
-function loadRunSettings(){
+function restoreSettings(){
   try{ const s = JSON.parse(localStorage.getItem('pm_evals_settings')||'null'); if(s){ $('#r_model').value=s.model; $('#r_judge').value=s.judge_model; $('#r_harness').value=s.harness; $('#r_turns').value=s.max_turns; $('#r_dmode').value=s.distractors.mode; $('#r_dcount').value=s.distractors.count; $('#r_dnear').value=String(s.distractors.near_miss); $('#r_dtools').value=s.dtools_raw||''; $('#r_cleanup').checked=s.cleanup.enabled; $('#r_prefix').value=s.cleanup.entity_prefix; $('#r_delprefix').value=s.cleanup.delete_tool_prefix; $('#r_dryclean').checked=!!s.cleanup.dry_run; } }catch(e){}
+}
+function loadRunSettings(){
   const p = STATUS.providers||{}; $('#r_providers').innerHTML = 'Keys detected: ' + Object.entries(p).filter(([k,v])=>v && k!=='mock' && k!=='ollama').map(([k])=>`<span class="pill pass">${esc(k)}</span>`).join(' ') + (STATUS.claude_cli? ' <span class="pill pass">claude CLI</span>':'') + (Object.values(p).filter(Boolean).length<=2 ? ' <span class="pill warnp">no API keys – use dry run, or set ANTHROPIC_API_KEY / OPENAI_API_KEY before starting</span>':'');
   $('#r_harness').onchange = () => { const t = $('#r_harness').value==='transcript'; $('#r_transcripts').style.display = t?'':'none'; if(t) loadTranscripts(); saveSettings(); };
   $('#r_harness').onchange();
@@ -459,7 +462,7 @@ async function uploadTranscript(id, input){ const fd = new FormData(); fd.append
 async function pasteTranscript(id){ const text = prompt('Paste the transcript JSON (generic format, Claude.ai/ChatGPT export, or API message list):'); if(!text) return; const fd = new FormData(); fd.append('text', text); try{ const r = await api(`/api/datasets/${encodeURIComponent(CUR_DATASET)}/transcripts/${encodeURIComponent(id)}`, {method:'POST', body: fd}); toast(`Parsed ${r.format}: ${r.tool_calls.length} tool calls`); loadTranscripts(); }catch(e){ toast(e.message,true);} }
 
 // ---------- step 4: run ----------
-let POLL = null, CUR_RUN = null;
+let POLL = null, CUR_RUN = null, POLL_FAILS = 0;
 async function loadRunPage(){
   const [ds, reps] = await Promise.all([api('/api/datasets'), api('/api/reports')]);
   const sel = $('#u_dataset'); sel.innerHTML = ds.map(d=>`<option value="${esc(d.name)}">${esc(d.name)} (${d.cases} cases)</option>`).join('');
@@ -473,12 +476,15 @@ async function loadRunPage(){
 $('#u_start').onclick = async () => {
   const cfg = runConfig(); cfg.dataset = $('#u_dataset').value; if(!cfg.dataset) return toast('Pick a dataset', true);
   cfg.case_ids = $('#u_cases').value.split(',').map(s=>s.trim()).filter(Boolean); cfg.compare_to = $('#u_compare').value || null;
-  try{ const r = await jpost('/api/runs', cfg); CUR_RUN = r.run_id; $('#u_progress').style.display=''; $('#u_doneactions').style.display='none'; $('#u_cancel').disabled=false; $('#u_start').disabled=true; poll(); }catch(e){ toast(e.message,true); }
+  $('#u_start').disabled=true; POLL_FAILS=0;
+  try{ const r = await jpost('/api/runs', cfg); CUR_RUN = r.run_id; $('#u_progress').style.display=''; $('#u_doneactions').style.display='none'; $('#u_cancel').disabled=false; poll(); }catch(e){ $('#u_start').disabled=false; toast(e.message,true); }
 };
-$('#u_cancel').onclick = async () => { if(CUR_RUN) await jpost(`/api/runs/${CUR_RUN}/cancel`, {}); };
+$('#u_cancel').onclick = async () => { if(CUR_RUN) await jpost(`/api/runs/${encodeURIComponent(CUR_RUN)}/cancel`, {}); };
 async function poll(){
   clearTimeout(POLL); if(!CUR_RUN) return;
-  const st = await api(`/api/runs/${CUR_RUN}`);
+  let st;
+  try{ st = await api(`/api/runs/${encodeURIComponent(CUR_RUN)}`); POLL_FAILS=0; }
+  catch(e){ if(++POLL_FAILS >= 5){ $('#u_start').disabled=false; $('#u_cancel').disabled=true; toast('Lost contact with the server: '+e.message, true); return; } POLL = setTimeout(poll, 3000); return; }
   $('#u_state').textContent = st.state; $('#u_bar').style.width = st.total ? (100*st.done/st.total)+'%' : '5%';
   $('#u_counts').textContent = st.total ? `${st.done} of ${st.total} cases · ${(st.cases||[]).filter(c=>c.passed).length} passed` : '';
   $('#u_log').textContent = (st.log||[]).join('\n'); $('#u_log').scrollTop = 1e9;
@@ -547,6 +553,7 @@ function loadHelp(){
 // ---------- boot ----------
 (async () => {
   try{ STATUS = await api('/api/status'); $('#foot').innerHTML = `v${esc(STATUS.version)}<br>workspace: ${esc(STATUS.workspace)}`; }catch(e){}
+  restoreSettings();
   const n = +(location.hash.replace('#s','')||1); go(n>=1&&n<=6?n:1);
 })();
 </script>

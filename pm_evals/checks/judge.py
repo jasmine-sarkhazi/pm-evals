@@ -52,14 +52,14 @@ _SCHEMA = {
                 "type": "object",
                 "properties": {
                     "criterion": {"type": "string"},
-                    "score": {"type": "integer", "minimum": 1, "maximum": 5},
+                    "score": {"type": "integer", "description": "1 (worst) to 5 (best)"},
                     "reason": {"type": "string"},
                 },
                 "required": ["criterion", "score", "reason"],
                 "additionalProperties": False,
             },
         },
-        "score": {"type": "integer", "minimum": 1, "maximum": 5},
+        "score": {"type": "integer", "description": "overall 1 (worst) to 5 (best)"},
         "reason": {"type": "string"},
     },
     "required": ["criteria", "score", "reason"],
@@ -146,6 +146,8 @@ async def _judge(ctx: CheckContext, metric: str) -> MetricResult:
         # the trajectory-flavoured criteria for this metric when identifiable.
         traj = [r for r in case.rubric if any(k in r.criterion for k in ("tool", "redundant", "order", "efficien", "trajectory", "step"))]
         rubric = traj or DEFAULT_RUBRICS[metric]
+    if getattr(ctx.judge, "kind", None) == "system_one":
+        return await _judge_system_one(ctx, metric, rubric)
     prompt = build_prompt(case, ctx, metric, rubric)
     try:
         data = await ctx.judge.json_completion(_SYSTEM, prompt, _SCHEMA, max_tokens=2048)
@@ -166,6 +168,73 @@ async def _judge(ctx: CheckContext, metric: str) -> MetricResult:
         {
             "judge_model": getattr(ctx.judge, "model", None),
             "overall_1_to_5": overall,
+            "criteria": criteria,
+            "rubric": [r.model_dump(mode="json") for r in rubric],
+            "output_format": case.output_format,
+        },
+    )
+
+
+# ---------------------------------------------------------------------------
+# System One (TypeSafe / Jev) judge: typed judgments instead of generated text
+# ---------------------------------------------------------------------------
+
+_OVERALL_QUESTION = {
+    "task_completion": (
+        "Did the agent correctly and completely perform the user's task using the tools, "
+        "with every claim in the final answer backed by a successful tool call?"
+    ),
+    "trajectory_quality": (
+        "Did the agent take a correct, efficient path: choosing the most fitting tools, "
+        "avoiding redundant, wrong or invented calls, in a sensible order, recovering from errors?"
+    ),
+}
+
+
+def _build_state(case: EvalCase, ctx: CheckContext) -> dict[str, Any]:
+    """The shared context Jev reasons over: one flat, JSON-serialisable dict."""
+    state: dict[str, Any] = {"task_given_to_the_agent": case.input}
+    if case.description:
+        state["what_a_correct_run_looks_like"] = case.description
+    if case.expected_output:
+        state["reference_final_answer"] = case.expected_output
+    if case.expected_tool_calls:
+        state["golden_tool_calls"] = [
+            {"name": e.name, "args": e.args, "required": e.required} for e in case.expected_tool_calls
+        ]
+    state["tools_available"] = sorted(n for n, d in ctx.tool_defs.items() if not d.get("distractor"))
+    state["agent_trajectory"] = _format_trajectory(ctx)
+    state["agent_final_answer"] = ctx.output or "(empty)"
+    if case.calibration_examples:
+        state["previously_graded_examples"] = case.calibration_examples[:5]
+    return state
+
+
+async def _judge_system_one(ctx: CheckContext, metric: str, rubric: list[RubricItem]) -> MetricResult:
+    case = ctx.case
+    state = _build_state(case, ctx)
+    overall_q = _OVERALL_QUESTION.get(metric, _OVERALL_QUESTION["task_completion"])
+    try:
+        data = await ctx.judge.grade(state, rubric, overall_q)
+    except Exception as exc:
+        return make_result(metric, 0.0, f"System One judge call failed: {exc}", {"error": str(exc)})
+    criteria = data.get("criteria") or []
+    try:
+        overall_f = float(data.get("score", 1.0))
+    except (TypeError, ValueError):
+        overall_f = 1.0
+    score = _weighted(rubric, criteria, overall_f)
+    reason = str(data.get("reason") or "").strip() or f"System One judge score {overall_f:.2f}/5"
+    return make_result(
+        metric,
+        score,
+        reason,
+        {
+            "judge_model": getattr(ctx.judge, "model", None),
+            "judge_method": "system_one",
+            "overall_1_to_5": round(overall_f, 2),
+            "correct": data.get("correct"),
+            "correct_probability": data.get("correct_probability"),
             "criteria": criteria,
             "rubric": [r.model_dump(mode="json") for r in rubric],
             "output_format": case.output_format,

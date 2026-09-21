@@ -6,6 +6,7 @@ import asyncio
 import datetime as dt
 import json
 import os
+import uuid
 from pathlib import Path
 from typing import Any, Optional
 
@@ -18,10 +19,10 @@ from ..checks.base import ALIASES, DEFAULT_METRICS_BY_CATEGORY, METRIC_HELP, SER
 from ..checks.deterministic import protocol_conformance
 from ..checks.judge import suggest_rubric
 from ..checks.safety import description_injection, rug_pull
-from ..importers.sheet import TEMPLATE_COLUMNS, fetch_google_sheet, parse_upload, rows_to_cases, template_csv
+from ..importers.sheet import TEMPLATE_COLUMNS, fetch_google_sheet, parse_upload, rows_to_cases_or_json, template_csv
 from ..mcpio.client import MCPConnection
 from ..models import EvalCase, MCPServerConfig, Report, RunConfig
-from ..providers.registry import configured_providers, make_provider
+from ..providers.registry import configured_providers, is_system_one_model, make_provider
 from ..reports.builder import render_html, render_markdown
 from ..reports.compare import compare_reports
 from ..runner.harness import harness_pack, parse_transcript
@@ -35,6 +36,14 @@ def create_app(workspace: Optional[Workspace] = None, in_process: Optional[dict[
     ws = workspace or Workspace()
     app = FastAPI(title="pm-evals", version=__version__)
     load_all()
+
+    @app.exception_handler(FileNotFoundError)
+    async def _not_found(_request: Any, exc: FileNotFoundError) -> JSONResponse:
+        return JSONResponse(status_code=404, content={"detail": f"not found: {exc}"})
+
+    @app.exception_handler(ValueError)
+    async def _bad_request(_request: Any, exc: ValueError) -> JSONResponse:
+        return JSONResponse(status_code=400, content={"detail": str(exc)})
     runs: dict[str, dict[str, Any]] = {}
     tasks: dict[str, asyncio.Task[Any]] = {}
 
@@ -145,15 +154,9 @@ def create_app(workspace: Optional[Workspace] = None, in_process: Optional[dict[
                 source = sheet_url.strip()
             else:
                 raise ValueError("Upload a CSV/XLSX/JSON file or paste a Google Sheets link.")
-            if rows and isinstance(rows[0], dict) and "input" in rows[0] and ("expected_tool_calls" in rows[0] or "mcp_servers" in rows[0]) and rows[0].get("id"):
-                # already pm-evals JSON cases
-                cases = [EvalCase.model_validate(r) for r in rows]
-                for c in cases:
-                    if server_cfgs and not c.mcp_servers:
-                        c.mcp_servers = server_cfgs
-                warnings: list[str] = []
-            else:
-                cases, warnings = rows_to_cases(rows, server_cfgs, default_category)
+            cases, warnings = rows_to_cases_or_json(rows, server_cfgs, default_category)
+            if not cases:
+                raise ValueError("No cases found in the sheet. " + "; ".join(warnings or ["Check that it has an 'input' (prompt) column and at least one row."]))
             if replace:
                 ws.delete_dataset(dataset)
             n = ws.save_cases(dataset, cases, {"source": source, "imported_at": dt.datetime.now(dt.timezone.utc).isoformat(), "servers": server_names})
@@ -206,6 +209,12 @@ def create_app(workspace: Optional[Workspace] = None, in_process: Optional[dict[
         case = cases.get(req.case_id)
         if case is None:
             raise HTTPException(404, "case not found")
+        if is_system_one_model(req.judge_model):
+            raise HTTPException(
+                422,
+                "TypeSafe System One (Jev) returns typed judgments and does not draft rubrics. "
+                "Draft with an LLM judge model (e.g. claude-opus-5), then run scoring with Jev.",
+            )
         tool_names: list[str] = []
         for s in case.mcp_servers:
             snap = ws.load_snapshot(s.server_name)
@@ -265,8 +274,8 @@ def create_app(workspace: Optional[Workspace] = None, in_process: Optional[dict[
             ws.load_cases(cfg.dataset)
         except FileNotFoundError as exc:
             raise _err(exc, 404)
-        run_id = f"{cfg.dataset}_{dt.datetime.now().strftime('%Y-%m-%d_%H%M%S')}"
-        runs[run_id] = {"state": "queued", "run_id": run_id, "dataset": cfg.dataset, "log": [], "done": 0, "total": 0}
+        run_id = f"{cfg.dataset}_{dt.datetime.now().strftime('%Y-%m-%d_%H%M%S')}_{uuid.uuid4().hex[:4]}"
+        runs[run_id] = {"state": "queued", "run_id": run_id, "dataset": cfg.dataset, "log": [], "done": 0, "total": 0, "started_at": dt.datetime.now(dt.timezone.utc).isoformat()}
         runner = Runner(ws, in_process=in_process)
 
         async def progress(st: dict[str, Any]) -> None:
@@ -282,7 +291,9 @@ def create_app(workspace: Optional[Workspace] = None, in_process: Optional[dict[
                 runs[run_id] = st
                 ws.save_run(run_id, st)
 
-        tasks[run_id] = asyncio.create_task(go())
+        task = asyncio.create_task(go())
+        tasks[run_id] = task
+        task.add_done_callback(lambda _t, rid=run_id: tasks.pop(rid, None))
         return {"run_id": run_id}
 
     @app.get("/api/runs")

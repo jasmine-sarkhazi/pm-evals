@@ -26,6 +26,12 @@ def _to_anthropic_messages(history: list[dict[str, Any]]) -> list[dict[str, Any]
             messages.append({"role": "user", "content": msg["content"]})
         elif role == "assistant":
             flush()
+            raw_blocks = msg.get("raw_blocks")
+            if raw_blocks:
+                # Replay the assistant turn exactly as the API returned it so
+                # thinking blocks (required when thinking is on) stay intact.
+                messages.append({"role": "assistant", "content": raw_blocks})
+                continue
             blocks: list[dict[str, Any]] = []
             if msg.get("content"):
                 blocks.append({"type": "text", "text": msg["content"]})
@@ -107,6 +113,7 @@ class AnthropicProvider(LLMProvider):
             usage=usage,
             raw=response.model_dump(mode="json"),
             thinking="\n".join(thinking) or None,
+            raw_blocks=[b.model_dump(mode="json", exclude_none=True) for b in response.content],
         )
 
     async def json_completion(self, system: str, prompt: str, schema: dict[str, Any], max_tokens: int = 4096) -> dict[str, Any]:
@@ -119,9 +126,13 @@ class AnthropicProvider(LLMProvider):
         }
         try:
             response = await self.client.messages.create(**params)
-        except self._anthropic.BadRequestError:
-            # Older models / proxies without structured outputs: fall back to text parsing.
-            return await super().json_completion(system, prompt, schema, max_tokens)
+        except self._anthropic.BadRequestError as exc:
+            # Only fall back to text parsing when structured outputs themselves
+            # are the problem (older models / proxies); surface anything else.
+            msg = str(exc).lower()
+            if any(k in msg for k in ("output_config", "schema", "structured", "format")):
+                return await super().json_completion(system, prompt, schema, max_tokens)
+            raise ProviderError(f"Anthropic API error {exc.status_code}: {exc.message}") from exc
         except self._anthropic.APIStatusError as exc:
             raise ProviderError(f"Anthropic API error {exc.status_code}: {exc.message}") from exc
         text = next((b.text for b in response.content if b.type == "text"), "")

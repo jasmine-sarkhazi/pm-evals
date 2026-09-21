@@ -335,7 +335,12 @@ def render_html(report: Report) -> str:
             out.append(f"<p><strong>Final answer</strong></p><pre>{_e(r.actual_output[:2000])}</pre>")
         judge = [m for m in r.metrics if m.category == "llm_judge" and m.details.get("criteria")]
         for m in judge:
-            out.append(f"<p><strong>Judge breakdown ({_e(m.metric)}, {_e(m.details.get('judge_model'))})</strong></p><table><tr><th>Criterion</th><th>Score (1-5)</th><th>Reason</th></tr>")
+            verdict = ""
+            if m.details.get("judge_method") == "system_one":
+                cp = m.details.get("correct_probability")
+                label = "correct" if m.details.get("correct") else "incorrect"
+                verdict = f" &middot; System One verdict: <strong>{label}</strong>" + (f" (P={_e(cp)})" if cp is not None else "")
+            out.append(f"<p><strong>Judge breakdown ({_e(m.metric)}, {_e(m.details.get('judge_model'))})</strong>{verdict}</p><table><tr><th>Criterion</th><th>Score (1-5)</th><th>Reason</th></tr>")
             for cr in m.details["criteria"]:
                 out.append(f"<tr><td>{_e(cr.get('criterion'))}</td><td>{_e(cr.get('score'))}</td><td>{_e(cr.get('reason'))}</td></tr>")
             out.append("</table>")

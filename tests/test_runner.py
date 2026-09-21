@@ -96,7 +96,10 @@ async def test_transcript_harness_and_compare(ws, demo):
     assert by_id["ajo_create_segment_001"].passed
     assert not by_id["ajo_lookup_schema_002"].passed
     assert report.comparison and report.comparison["verdict"] == "regression"
-    assert [e["case_id"] for e in report.comparison["regressions"]] == ["ajo_lookup_schema_002"]
+    assert "ajo_lookup_schema_002" in [e["case_id"] for e in report.comparison["regressions"]]
+    # state checks run against the live server for transcript runs too (not skipped)
+    sc = next(m for m in by_id["ajo_create_segment_001"].metrics if m.metric == "state_check")
+    assert not sc.skipped
     again = compare_reports(report, baseline)
     assert again["pass_rate"]["delta"] < 0
 

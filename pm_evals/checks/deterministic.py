@@ -245,7 +245,8 @@ async def protocol_conformance(conn: Any, tools: list[Any]) -> ServerFinding:
     unknown = await conn.call_tool("__pm_evals_nonexistent_tool__", {})
     add("unknown tool returns an error (not a crash)", unknown.is_error and not unknown.malformed, unknown.text[:120])
     if tools:
-        target = next((t for t in tools if (t.input_schema or {}).get("required")), None)
+        candidates = [t for t in tools if (t.input_schema or {}).get("required")]
+        target = next((t for t in candidates if is_read_only(t.name, {"annotations": t.annotations})), candidates[0] if candidates else None)
         if target is not None:
             missing = await conn.call_tool(target.name, {})
             add("missing required args are rejected", missing.is_error, f"{target.name}: {missing.text[:100]}")
