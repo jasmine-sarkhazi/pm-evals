@@ -171,7 +171,7 @@ pre{background:#f0f0ee;padding:10px;border-radius:8px;overflow:auto;font-size:12
       <h3>Model under test</h3>
       <label>Model <span class="hint">– any provider: claude-…, gpt-…, gemini-…, groq:…, ollama:…, openai-compat:…</span></label>
       <input type="text" id="r_model" list="models" value="claude-opus-5">
-      <datalist id="models"><option value="claude-opus-5"><option value="claude-sonnet-5"><option value="claude-haiku-4-5"><option value="gpt-5"><option value="gpt-4.1"><option value="gemini-2.5-pro"><option value="ollama:llama3.1"><option value="mock"></datalist>
+      <datalist id="models"><option value="claude-opus-5"><option value="claude-sonnet-5"><option value="claude-haiku-4-5"><option value="gpt-5"><option value="gpt-4.1"><option value="gemini-2.5-pro"><option value="ollama:llama3.1"><option value="jev"><option value="jev:mock"><option value="mock"></datalist>
       <label>Harness</label>
       <select id="r_harness">
         <option value="api">API (we drive the model with your MCP tools)</option>
@@ -183,10 +183,11 @@ pre{background:#f0f0ee;padding:10px;border-radius:8px;overflow:auto;font-size:12
       <label>Max tool-calling turns per case</label><input type="number" id="r_turns" value="12" min="1" max="50">
     </div>
     <div class="card">
-      <h3>LLM judge</h3>
+      <h3>Judge</h3>
       <label>Judge model <span class="hint">– used for task completion &amp; trajectory quality</span></label>
       <input type="text" id="r_judge" list="models" value="claude-opus-5">
       <p class="small muted">Rubrics are task-specific: set one per case in the sheet (<code>rubric</code> column) or with “Suggest rubric”. Each criterion is scored 1–5 with calibration anchors and weighted into a 0–100% score.</p>
+      <p class="small muted">Enter an LLM (e.g. <code>claude-opus-5</code>) for the classic LLM-as-judge, or <code>jev</code> to judge with TypeSafe's <strong>System One</strong> model: each criterion becomes a typed <em>Score</em> and “did the tool perform correctly?” a typed <em>Noul</em> (probability), instead of generated prose. Needs <code>TYPESAFE_API_KEY</code>; use <code>jev:mock</code> to try it offline. (Rubric drafting still needs an LLM judge.)</p>
       <label>Run label <span class="hint">– optional, e.g. “after prompt fix”</span></label><input type="text" id="r_label">
     </div>
     <div class="card">
@@ -311,7 +312,7 @@ pre{background:#f0f0ee;padding:10px;border-radius:8px;overflow:auto;font-size:12
   "output_format": {"score": "1-5", "reason": "string"}
 }</pre>
     <h3>Providers &amp; keys</h3>
-    <p class="small">Set environment variables before starting: <code>ANTHROPIC_API_KEY</code> (claude-…), <code>OPENAI_API_KEY</code> (gpt-…), <code>GEMINI_API_KEY</code> (gemini-…), <code>GROQ_API_KEY</code>, <code>MISTRAL_API_KEY</code>, or <code>OPENAI_COMPAT_BASE_URL</code> + <code>OPENAI_COMPAT_API_KEY</code> for any OpenAI-compatible endpoint (<code>openai-compat:model</code>). <code>ollama:model</code> needs no key. Judge and model under test can be from different providers.</p>
+    <p class="small">Set environment variables before starting: <code>ANTHROPIC_API_KEY</code> (claude-…), <code>OPENAI_API_KEY</code> (gpt-…), <code>GEMINI_API_KEY</code> (gemini-…), <code>GROQ_API_KEY</code>, <code>MISTRAL_API_KEY</code>, or <code>OPENAI_COMPAT_BASE_URL</code> + <code>OPENAI_COMPAT_API_KEY</code> for any OpenAI-compatible endpoint (<code>openai-compat:model</code>). <code>ollama:model</code> needs no key. For the TypeSafe System One judge (<code>jev</code>) set <code>TYPESAFE_API_KEY</code> (or use <code>jev:mock</code> offline). Judge and model under test can be from different providers.</p>
   </div>
 </section>
 </main>

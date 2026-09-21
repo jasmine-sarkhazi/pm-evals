@@ -229,7 +229,7 @@ def build_parser() -> argparse.ArgumentParser:
     r = sub.add_parser("run", help="run a dataset and write a report")
     r.add_argument("dataset")
     r.add_argument("--model", default="claude-opus-5")
-    r.add_argument("--judge", default=None, help="judge model (default: same as --model)")
+    r.add_argument("--judge", default=None, help="judge model (default: same as --model); use 'jev' for the TypeSafe System One judge, 'jev:mock' offline")
     r.add_argument("--harness", default="api", choices=["api", "dry-run", "transcript", "claude-code"])
     r.add_argument("--server", action="append")
     r.add_argument("--case", action="append")

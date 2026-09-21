@@ -21,7 +21,7 @@ from ..checks.safety import description_injection, rug_pull
 from ..importers.sheet import TEMPLATE_COLUMNS, fetch_google_sheet, parse_upload, rows_to_cases, template_csv
 from ..mcpio.client import MCPConnection
 from ..models import EvalCase, MCPServerConfig, Report, RunConfig
-from ..providers.registry import configured_providers, make_provider
+from ..providers.registry import configured_providers, is_system_one_model, make_provider
 from ..reports.builder import render_html, render_markdown
 from ..reports.compare import compare_reports
 from ..runner.harness import harness_pack, parse_transcript
@@ -206,6 +206,12 @@ def create_app(workspace: Optional[Workspace] = None, in_process: Optional[dict[
         case = cases.get(req.case_id)
         if case is None:
             raise HTTPException(404, "case not found")
+        if is_system_one_model(req.judge_model):
+            raise HTTPException(
+                422,
+                "TypeSafe System One (Jev) returns typed judgments and does not draft rubrics. "
+                "Draft with an LLM judge model (e.g. claude-opus-5), then run scoring with Jev.",
+            )
         tool_names: list[str] = []
         for s in case.mcp_servers:
             snap = ws.load_snapshot(s.server_name)
