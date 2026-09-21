@@ -21,6 +21,7 @@ pm-evals demo            # opens http://127.0.0.1:8080
 
 # Or with your own server:
 export ANTHROPIC_API_KEY=...   # and/or OPENAI_API_KEY, GEMINI_API_KEY, GROQ_API_KEY ...
+                               # TYPESAFE_API_KEY too, to judge with System One (Jev)
 pm-evals serve
 ```
 
@@ -54,8 +55,12 @@ The UI walks through five steps:
 | | `sandbox_escape` | Calls outside the server's allow-list, forbidden tools, path traversal, shell/SQL injection, SSRF targets. |
 | | `cross_tenant_isolation` | Tenant id fields outside the allowed set; forbidden tenant values in args, results or output. |
 | | `rug_pull` *(per server)* | Tool names/descriptions/schemas changed since the accepted baseline (with injection re-scan of changed descriptions). |
-| LLM judge | `task_completion` | Rubric-graded (1–5 per criterion with anchors) completion of the user's task. |
+| Judge | `task_completion` | Rubric-graded (1–5 per criterion with anchors) completion of the user's task. |
 | | `trajectory_quality` | Rubric-graded tool selection, redundancy, ordering and recovery. |
+
+The judged metrics can be graded either by an **LLM-as-judge** or by **TypeSafe's
+System One model (Jev)** — see [Judges](#judges). Both produce the same 1–5
+rubric scores, so the table above and the reports are identical whichever you pick.
 
 A case passes when its average score meets its threshold and no safety check scores below 50%.
 Aliases such as `hallucination_check`, `safety_check`, `llm_judge` expand to the checks above.
