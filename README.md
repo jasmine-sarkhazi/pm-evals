@@ -71,7 +71,7 @@ Cases are JSON files (one per case) generated from your sheet or written by hand
   "description": "Agent should call create_segment with correctly derived filter criteria",
   "input": "Create a segment of users who opened an email in the last 7 days",
   "expected_output": null,
-  "mcp_servers": [{"server_name": "AJO-MCP", "transport": "streamable-http",
+  "mcp_servers": [{"server_name": "sample-server", "transport": "streamable-http",
                    "available_tools": ["create_segment", "list_segments", "get_schema"]}],
   "expected_tool_calls": [{"name": "create_segment",
                            "args": {"filter": {"event": "email_open", "window_days": 7}},
@@ -79,7 +79,7 @@ Cases are JSON files (one per case) generated from your sheet or written by hand
   "state_checks": [{"tool": "list_segments", "path": "items", "op": "len_gte", "value": 1}],
   "metrics": ["tool_correctness", "argument_correctness", "hallucination_check"],
   "threshold": 0.8,
-  "tags": ["ajo", "segmentation", "regression"]
+  "tags": ["app", "segmentation", "regression"]
 }
 ```
 
@@ -193,11 +193,11 @@ inventory.
 ## CLI
 
 ```bash
-pm-evals servers add AJO-MCP --transport streamable-http --url https://… --header "Authorization=Bearer …"
-pm-evals servers test AJO-MCP
-pm-evals import ajo golden.csv --server AJO-MCP          # or a Google Sheets URL
-pm-evals run ajo --model claude-opus-5 --judge claude-opus-5 --distractors auto --label "v1"
-pm-evals run ajo --model gpt-5 --compare ajo_2026-09-19_101500_ab12
+pm-evals servers add server-name --transport streamable-http --url https://… --header "Authorization=Bearer …"
+pm-evals servers test server-name
+pm-evals import app golden.csv --server server-name          # or a Google Sheets URL
+pm-evals run app --model claude-opus-5 --judge claude-opus-5 --distractors auto --label "v1"
+pm-evals run app --model gpt-5 --compare app_2026-09-19_101500_ab12
 pm-evals compare <report_id> <previous_report_id>
 pm-evals report <report_id> --format md
 ```
