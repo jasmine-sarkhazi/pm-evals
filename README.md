@@ -66,7 +66,7 @@ Cases are JSON files (one per case) generated from your sheet or written by hand
 
 ```json
 {
-  "id": "ajo_create_segment_001",
+  "id": "app_create_segment_001",
   "category": "deterministic",
   "description": "Agent should call create_segment with correctly derived filter criteria",
   "input": "Create a segment of users who opened an email in the last 7 days",
@@ -147,7 +147,7 @@ The `--judge` / judge-model setting picks *how* the `task_completion` and
   ```bash
   pip install "pm-evals[typesafe]"        # the typesafe-sdk client
   export TYPESAFE_API_KEY=...             # from https://console.typesafe.ai/
-  pm-evals run ajo --model claude-opus-5 --judge jev
+  pm-evals run app --model claude-opus-5 --judge jev
   ```
 
   Use `jev:mock` to exercise the System One path offline (no SDK, key or network).
